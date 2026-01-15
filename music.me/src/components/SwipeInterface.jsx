@@ -19,14 +19,16 @@ const SwipeInterface = ({
   onSave,
   onViewResults,
   savedCount,
+  likedTracks,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [likedTracks, setLikedTracks] = useState([]);
   const [swipeDirection, setSwipeDirection] = useState(null);
   const [audioLoaded, setAudioLoaded] = useState(false);
   const [showNoAudioAlert, setShowNoAudioAlert] = useState(false);
   const audioRef = useRef(new Audio());
+  const [showMaxLikesModal, setShowMaxLikesModal] = useState(false);
+  const [pendingSwipeAction, setPendingSwipeAction] = useState(null);
 
   const currentTrack = deck[currentIndex];
   const audioUrl = currentTrack?.preview || currentTrack?.preview_url;
@@ -51,7 +53,6 @@ const SwipeInterface = ({
     }
   }, [currentIndex, audioUrl]);
 
-  // Handle swipe
   const handleSwipe = (direction) => {
     if (audioRef.current) {
       audioRef.current.pause();
@@ -60,28 +61,70 @@ const SwipeInterface = ({
 
     setSwipeDirection(direction);
 
-    if (likedTracks.length >= MAX_LIKES) {
-      const proceed = window.confirm(
-        "You’ve reached 10 saved songs. Add more anyway?",
-      );
-      if (!proceed) return;
+    // If user tries to like (right swipe) and has reached max likes
+    if (direction === "right" && likedTracks.length >= MAX_LIKES) {
+      setPendingSwipeAction({ direction, track: currentTrack });
+      setShowMaxLikesModal(true);
+      return;
     }
-    setLikedTracks([...likedTracks, currentTrack]);
 
+    proceedWithSwipe(direction);
+  };
+
+  // Helper function to handle the actual swipe action
+  const proceedWithSwipe = (direction) => {
+    // If it's a right swipe (like), call onSave
+    if (direction === "right" && onSave) {
+      onSave(currentTrack);
+    }
+
+    // Animate and move to next track
     setTimeout(() => {
       setSwipeDirection(null);
       if (currentIndex < deck.length - 1) {
         setCurrentIndex(currentIndex + 1);
       } else {
-        setTimeout(() => onBack(), 1000);
+        // All tracks swiped, automatically go to results
+        setTimeout(() => {
+          if (onViewResults) onViewResults();
+        }, 1000);
       }
     }, 300);
+  };
+
+  // Handle modal actions
+  const handleModalChoice = (choice) => {
+    if (choice === "add-more" && pendingSwipeAction && onSave) {
+      onSave(pendingSwipeAction.track);
+
+      setSwipeDirection(pendingSwipeAction.direction);
+      setTimeout(() => {
+        setSwipeDirection(null);
+        if (currentIndex < deck.length - 1) {
+          setCurrentIndex(currentIndex + 1);
+        } else {
+          setTimeout(() => {
+            if (onViewResults) onViewResults();
+          }, 1000);
+        }
+      }, 300);
+    } else if (choice === "view-bento") {
+      // Direct to results
+      if (onViewResults) {
+        onViewResults();
+      }
+    }
+
+    setShowMaxLikesModal(false);
+    setPendingSwipeAction(null);
   };
 
   // Toggle play/pause with alert for no audio
   const togglePlay = () => {
     if (!hasAudio) {
-      alert("This track has no audio preview available.");
+      // Show a better message
+      setShowNoAudioAlert(true);
+      setTimeout(() => setShowNoAudioAlert(false), 3000);
       return;
     }
 
@@ -124,24 +167,6 @@ const SwipeInterface = ({
     };
   }, []);
 
-  // if (!currentTrack || deck.length === 0) {
-  //   return (
-  //     <div className="min-h-[60vh] flex flex-col items-center justify-center p-6">
-  //       <h3 className="text-2xl font-bold text-white mb-4">
-  //         Discovery Complete!
-  //       </h3>
-  //       <p className="text-gray-400 mb-6 text-center">
-  //         You saved {likedTracks.length} out of {deck.length} tracks
-  //       </p>
-  //       <button
-  //         onClick={onBack}
-  //         className="bg-white text-black px-6 py-3 rounded-xl font-medium hover:bg-gray-100 transition-colors"
-  //       >
-  //         Start New Discovery
-  //       </button>
-  //     </div>
-  //   );
-  // }
   if (deck.length === 0) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center text-center">
@@ -179,6 +204,67 @@ const SwipeInterface = ({
 
   return (
     <div className="space-y-6 max-w-md mx-auto px-4">
+      {/* Max Likes Modal */}
+      <AnimatePresence>
+        {showMaxLikesModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+            onClick={() => {
+              setShowMaxLikesModal(false);
+              setPendingSwipeAction(null);
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-gray-900 border border-white/20 rounded-2xl p-6 max-w-sm w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
+                  <Heart className="w-8 h-8 text-green-400" />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-2">
+                  Bento is getting full!
+                </h3>
+                <p className="text-gray-400">
+                  You've saved {likedTracks.length} tracks. Add more anyway?
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowMaxLikesModal(false);
+                    setPendingSwipeAction(null);
+                  }}
+                  className="flex-1 py-3 bg-white/10 hover:bg-white/20 rounded-xl transition-colors text-white"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  onClick={() => handleModalChoice("add-more")}
+                  className="flex-1 py-3 bg-green-500 hover:bg-green-600 rounded-xl font-medium transition-colors text-white"
+                >
+                  Add More
+                </button>
+
+                <button
+                  onClick={() => handleModalChoice("view-bento")}
+                  className="flex-1 py-3 bg-blue-500 hover:bg-blue-600 rounded-xl font-medium transition-colors text-white"
+                >
+                  View Bento
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* No audio alert */}
       <AnimatePresence>
         {showNoAudioAlert && !hasAudio && (
@@ -210,11 +296,12 @@ const SwipeInterface = ({
           </span>
           {savedCount > 0 && (
             <button
-              onClick={() => onViewResults?.()}
+              onClick={onViewResults} // Already correct
               className="text-sm text-white hover:text-gray-300 transition-colors flex items-center gap-1"
             >
               <ListMusic className="w-4 h-4" />
-              <span>{savedCount} saved</span>
+              <span>{likedTracks.length} saved</span>{" "}
+              {/* Use likedTracks from props */}
             </button>
           )}
         </div>

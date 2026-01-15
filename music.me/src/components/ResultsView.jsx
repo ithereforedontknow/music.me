@@ -1,208 +1,226 @@
-// components/ResultsView.jsx
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
-  Heart,
-  X,
   Music,
-  Trash2,
-  ExternalLink,
+  X,
   Play,
-  Grid3x3,
+  ExternalLink,
+  Download,
+  Share2,
+  Heart,
 } from "lucide-react";
+import { useState } from "react";
 
-const ResultsView = ({
-  savedTracks,
-  onClearResults,
-  onRemoveSaved,
-  onBackToSwipe,
-  onNewDiscovery,
-}) => {
-  const maxTracks = 10;
-  const remainingSlots = maxTracks - savedTracks.length;
+const BentoResults = ({ likedTracks, onBack, onStartNew }) => {
+  const [selectedTrack, setSelectedTrack] = useState(null);
+  const [playingAudio, setPlayingAudio] = useState(null);
+
+  const handlePlayPreview = (track, index) => {
+    if (playingAudio) {
+      playingAudio.pause();
+    }
+
+    if (selectedTrack === index && playingAudio) {
+      setPlayingAudio(null);
+      setSelectedTrack(null);
+    } else {
+      const audio = new Audio(track.preview || track.preview_url);
+      audio.play();
+      audio.onended = () => {
+        setPlayingAudio(null);
+        setSelectedTrack(null);
+      };
+      setPlayingAudio(audio);
+      setSelectedTrack(index);
+    }
+  };
+
+  const handleExport = () => {
+    // Create a playlist text
+    const playlist = likedTracks
+      .map(
+        (track, i) =>
+          `${i + 1}. ${track.title || track.name} - ${track.artist?.name || track.artists?.[0]?.name}`,
+      )
+      .join("\n");
+
+    // Create a blob and download
+    const blob = new Blob([playlist], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "soundswipe-playlist.txt";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleShare = async () => {
+    const shareData = {
+      title: "My SoundSwipe Bento",
+      text: `I discovered ${likedTracks.length} amazing tracks on SoundSwipe!`,
+      url: window.location.href,
+    };
+
+    if (navigator.share && navigator.canShare(shareData)) {
+      try {
+        await navigator.share(shareData);
+      } catch (err) {
+        console.log("Error sharing:", err);
+      }
+    } else {
+      // Fallback: copy to clipboard
+      const playlistText = likedTracks
+        .map(
+          (track) =>
+            `${track.title || track.name} by ${track.artist?.name || track.artists?.[0]?.name}`,
+        )
+        .join("\n");
+
+      navigator.clipboard.writeText(`My SoundSwipe Bento:\n${playlistText}`);
+      alert("Playlist copied to clipboard!");
+    }
+  };
 
   return (
-    <div className="space-y-8">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="space-y-6"
+    >
       {/* Header */}
-      <div className="text-center">
-        <div className="flex items-center justify-center gap-2 mb-4">
-          <Grid3x3 className="w-6 h-6 text-white" />
-          <h2 className="text-2xl font-bold text-white">My Music Grid</h2>
+      <div className="text-center mb-8">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-pink-500 to-purple-600 mb-4">
+          <Heart className="w-8 h-8 text-white" />
         </div>
-        <div className="inline-flex items-center gap-4 bg-white/5 px-6 py-2 rounded-full">
-          <div className="flex items-center gap-2">
-            <Heart className="w-4 h-4 text-green-400" />
-            <span className="text-white font-medium">
-              {savedTracks.length} saved
-            </span>
+        <h1 className="text-3xl font-bold text-white mb-2">Your Bento Box</h1>
+        <p className="text-gray-400">
+          You saved {likedTracks.length} track
+          {likedTracks.length !== 1 ? "s" : ""}
+        </p>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 gap-4 mb-8">
+        <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
+          <div className="text-2xl font-bold text-white mb-1">
+            {likedTracks.length}
           </div>
-          <div className="h-4 w-px bg-white/20" />
-          <div className="text-gray-400">
-            {remainingSlots > 0
-              ? `${remainingSlots} slots remaining`
-              : "Grid is full!"}
+          <div className="text-sm text-gray-400">Tracks Saved</div>
+        </div>
+        <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
+          <div className="text-2xl font-bold text-white mb-1">
+            {Math.floor(
+              likedTracks.reduce(
+                (acc, track) => acc + (track.duration || 0),
+                0,
+              ) / 60,
+            )}
           </div>
+          <div className="text-sm text-gray-400">Total Minutes</div>
         </div>
       </div>
 
-      {/* Warning if grid is full */}
-      {savedTracks.length >= maxTracks && (
-        <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-          <p className="text-sm text-amber-300 text-center">
-            ⚠️ Your grid is full (10/10). Remove tracks to add more.
-          </p>
-        </div>
-      )}
-
-      {/* Bento Grid */}
-      {savedTracks.length === 0 ? (
-        <div className="text-center py-12 border-2 border-dashed border-white/10 rounded-2xl bg-white/5">
-          <Grid3x3 className="w-12 h-12 text-gray-500 mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-white mb-2">Empty Grid</h3>
-          <p className="text-gray-400 mb-6">
-            Start swiping to add tracks to your grid!
-          </p>
-          <button
-            onClick={onBackToSwipe}
-            className="bg-white text-black px-6 py-3 rounded-xl font-medium hover:bg-gray-100 transition-colors"
-          >
-            Start Swiping
-          </button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          <AnimatePresence>
-            {savedTracks.map((track, index) => (
-              <motion.div
-                key={track.id}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ delay: index * 0.05 }}
-                className="bg-white/5 border border-white/10 rounded-xl overflow-hidden group hover:bg-white/10 transition-all"
-              >
-                {/* Album art */}
-                <div className="relative aspect-square">
-                  <img
-                    src={
-                      track.album?.cover_big || track.album?.images?.[0]?.url
-                    }
-                    alt={track.title}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                    <button className="w-10 h-10 bg-white rounded-full flex items-center justify-center hover:bg-gray-100">
-                      <Play className="w-5 h-5 text-black ml-0.5" />
-                    </button>
-                    <a
-                      href={`https://open.spotify.com/search/${encodeURIComponent(track.title + " " + track.artist?.name)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-10 h-10 bg-white rounded-full flex items-center justify-center hover:bg-gray-100"
-                    >
-                      <ExternalLink className="w-4 h-4 text-black" />
-                    </a>
-                  </div>
-                </div>
-
-                {/* Track info */}
-                <div className="p-4">
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-bold text-white truncate text-sm">
-                        {track.title || track.name}
-                      </h4>
-                      <p className="text-xs text-gray-400 truncate">
-                        {track.artist?.name || track.artists?.[0]?.name}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => onRemoveSaved(track.id)}
-                      className="text-gray-400 hover:text-red-400 transition-colors ml-2 flex-shrink-0"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  {/* Album info */}
-                  {track.album?.title && (
-                    <div className="flex items-center gap-1 text-xs text-gray-500 mb-3">
-                      <Music className="w-3 h-3" />
-                      <span className="truncate">{track.album.title}</span>
-                    </div>
-                  )}
-
-                  {/* Status */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-green-400 flex items-center gap-1">
-                      <Heart className="w-3 h-3" />
-                      Saved
-                    </span>
-                    {track.lastfm_reason && (
-                      <span className="text-xs text-gray-500 text-right">
-                        {track.lastfm_reason}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-
-          {/* Empty slots */}
-          {Array.from({ length: remainingSlots }).map((_, index) => (
-            <div
-              key={`empty-${index}`}
-              className="aspect-square border-2 border-dashed border-white/10 rounded-xl flex flex-col items-center justify-center bg-white/5 hover:bg-white/10 transition-colors"
-            >
-              <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center mb-3">
-                <Heart className="w-6 h-6 text-white/30" />
-              </div>
-              <p className="text-sm text-white/30">Empty Slot</p>
-              <p className="text-xs text-white/20 mt-1">Save tracks to fill</p>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Actions */}
-      <div className="flex flex-col sm:flex-row gap-4 pt-8">
+      {/* Action Buttons */}
+      <div className="flex gap-3 mb-8">
         <button
-          onClick={onBackToSwipe}
-          className="flex-1 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-medium transition-colors"
+          onClick={handleExport}
+          className="flex-1 py-3 bg-white border border-white/20 rounded-xl flex items-center justify-center gap-2 transition-colors"
         >
-          ← Back to Swiping
+          <Download className="w-4 h-4" />
+          <span className="text-sm font-medium">Export</span>
         </button>
-
         <button
-          onClick={onNewDiscovery}
+          onClick={handleShare}
+          className="flex-1 py-3 bg-white border border-white/20 rounded-xl flex items-center justify-center gap-2 transition-colors"
+        >
+          <Share2 className="w-4 h-4" />
+          <span className="text-sm font-medium">Share</span>
+        </button>
+      </div>
+
+      {/* Track List */}
+      <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-2">
+        {likedTracks.map((track, index) => (
+          <motion.div
+            key={index}
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: index * 0.05 }}
+            className="bg-white/5 border border-white/10 rounded-xl p-4 flex items-center gap-4 hover:bg-white/10 transition-colors"
+          >
+            <div className="relative">
+              <img
+                src={track.album?.cover_big || track.album?.images?.[0]?.url}
+                className="w-12 h-12 rounded-lg object-cover"
+                alt={track.title}
+              />
+              <button
+                onClick={() => handlePlayPreview(track, index)}
+                className={`absolute inset-0 flex items-center justify-center bg-black/60 rounded-lg transition-opacity ${
+                  track.preview || track.preview_url
+                    ? "opacity-0 hover:opacity-100"
+                    : "opacity-50"
+                }`}
+                disabled={!track.preview && !track.preview_url}
+              >
+                {selectedTrack === index && playingAudio ? (
+                  <div className="w-4 h-4 bg-white rounded-sm" />
+                ) : (
+                  <Play className="w-4 h-4 text-white" />
+                )}
+              </button>
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <h4 className="font-medium text-white truncate">
+                {track.title || track.name}
+              </h4>
+              <p className="text-sm text-gray-400 truncate">
+                {track.artist?.name ||
+                  track.artists?.map((a) => a.name).join(", ")}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {track.preview || track.preview_url ? (
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+              ) : (
+                <div className="w-2 h-2 bg-red-500 rounded-full" />
+              )}
+              <a
+                href={`https://open.spotify.com/search/${encodeURIComponent(
+                  `${track.title || track.name} ${track.artist?.name || track.artists?.[0]?.name}`,
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 text-gray-400 hover:text-white transition-colors"
+              >
+                <ExternalLink className="w-4 h-4" />
+              </a>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Bottom Actions */}
+      <div className="flex gap-3 pt-6">
+        <button
+          onClick={onBack}
+          className="flex-1 py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl transition-colors text-white"
+        >
+          Continue Swiping
+        </button>
+        <button
+          onClick={onStartNew}
           className="flex-1 py-3 bg-white text-black rounded-xl font-medium hover:bg-gray-100 transition-colors"
         >
-          New Discovery Session
+          Start New Discovery
         </button>
       </div>
-
-      {/* Clear button */}
-      {savedTracks.length > 0 && (
-        <div className="text-center pt-4 border-t border-white/10">
-          <button
-            onClick={() => {
-              if (
-                window.confirm(
-                  "Are you sure you want to clear all saved tracks?",
-                )
-              ) {
-                onClearResults();
-              }
-            }}
-            className="text-red-400 hover:text-red-300 text-sm font-medium transition-colors flex items-center gap-2 mx-auto"
-          >
-            <Trash2 className="w-4 h-4" />
-            Clear All Tracks
-          </button>
-        </div>
-      )}
-    </div>
+    </motion.div>
   );
 };
 
-export default ResultsView;
+export default BentoResults;

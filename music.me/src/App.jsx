@@ -5,6 +5,7 @@ import LogoMorph from "./components/LogoMorph";
 import OnboardingFlow from "./components/Onboarding/OnboardingFlow";
 import GenerationSequence from "./components/GenerationSequence";
 import SwipeInterface from "./components/SwipeInterface";
+import ResultsView from "./components/ResultsView"; // We'll create this
 import { Music } from "lucide-react";
 import { getCombinedRecommendations } from "./services/recommendationService";
 
@@ -16,8 +17,10 @@ const App = () => {
     referenceTrack: null,
   });
   const [generatedDeck, setGeneratedDeck] = useState([]);
+  const [likedTracks, setLikedTracks] = useState([]); // Moved to App level
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingMessage, setLoadingMessage] = useState("");
+  const [showResults, setShowResults] = useState(false); // New state for results
 
   const handleLogoComplete = () => {
     setTimeout(() => setFlowState("onboarding"), 800);
@@ -37,17 +40,15 @@ const App = () => {
 
     try {
       updateProgress(10, "Analyzing your music taste...");
-
-      // Get recommendations from Last.fm
       const lastfmTracks = await getCombinedRecommendations(preferences);
-
       updateProgress(60, "Finding track previews...");
-
-      // Convert Last.fm tracks to Deezer tracks for previews
       const tracksWithPreviews = await enrichTracksWithDeezer(lastfmTracks);
 
-      // Set the generated deck here!
+      // Set the generated deck
       setGeneratedDeck(tracksWithPreviews);
+
+      // Reset liked tracks when generating new deck
+      setLikedTracks([]);
 
       if (!tracksWithPreviews.length) {
         throw new Error("NO_RESULTS");
@@ -63,15 +64,14 @@ const App = () => {
       }, 1000);
     } catch (error) {
       console.error("Deck generation failed:", error);
-
       setLoadingMessage(
         error.message === "NO_RESULTS"
-          ? "We couldn’t find playable previews for your taste."
+          ? "We couldn't find playable previews for your taste."
           : "Music services are currently unavailable.",
       );
 
-      // Set empty deck on error
       setGeneratedDeck([]);
+      setLikedTracks([]);
 
       setTimeout(() => {
         setFlowState("swiping");
@@ -79,75 +79,139 @@ const App = () => {
       }, 1200);
     }
   };
-  // Search Deezer for tracks to get preview URLs
+
+  // Update the enrichTracksWithDeezer function in App.js
   const enrichTracksWithDeezer = async (lastfmTracks) => {
     const enrichedTracks = [];
+    const tracksToProcess = lastfmTracks.slice(0, 40); // Process more tracks
 
-    for (const track of lastfmTracks.slice(0, 30)) {
+    for (const track of tracksToProcess) {
       try {
-        // Handle different track structures
-        const trackName = track.name || track.title;
-        const artistName =
-          track.artist?.name || track.artists?.[0]?.name || "Unknown Artist";
-
-        const searchQuery = `${trackName} ${artistName}`;
-
-        // Updated CORS proxy URL format
+        const searchQuery = `${track.name} ${track.artist.name}`;
         const proxyUrl = "https://corsproxy.io/?";
-        const deezerUrl = `https://api.deezer.com/search?q=${encodeURIComponent(searchQuery)}&limit=1`;
+        const deezerUrl = `https://api.deezer.com/search?q=${encodeURIComponent(searchQuery)}&limit=3`; // Try multiple results
 
-        const response = await fetch(
-          `${proxyUrl}${encodeURIComponent(deezerUrl)}`,
-        );
-
-        if (!response.ok) {
-          throw new Error(`Deezer API error: ${response.status}`);
-        }
-
+        const response = await fetch(proxyUrl + encodeURIComponent(deezerUrl));
         const data = await response.json();
 
-        if (data.data?.[0] && data.data[0].preview) {
-          const deezerTrack = data.data[0];
+        if (data.data && data.data.length > 0) {
+          // Try to find best match
+          const bestMatch =
+            data.data.find(
+              (d) =>
+                d.artist.name
+                  .toLowerCase()
+                  .includes(track.artist.name.toLowerCase()) ||
+                track.artist.name
+                  .toLowerCase()
+                  .includes(d.artist.name.toLowerCase()),
+            ) || data.data[0];
+
+          if (bestMatch.preview) {
+            enrichedTracks.push({
+              ...track, // Keep original track data including score, genres, moods
+              ...bestMatch,
+              title: bestMatch.title || track.name,
+              name: bestMatch.title || track.name,
+              artist: { name: bestMatch.artist.name },
+              artists: [{ name: bestMatch.artist.name }],
+              album: {
+                title: bestMatch.album?.title || "Unknown Album",
+                name: bestMatch.album?.title || "Unknown Album",
+                cover_big:
+                  bestMatch.album?.cover_big ||
+                  bestMatch.artist?.picture_big ||
+                  "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=500&h=500&fit=crop",
+                cover_small:
+                  bestMatch.album?.cover_small ||
+                  bestMatch.artist?.picture_medium ||
+                  "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=150&h=150&fit=crop",
+              },
+              preview_url: bestMatch.preview,
+              preview: bestMatch.preview,
+              duration: bestMatch.duration,
+              reason:
+                track.reason ||
+                (track.source === "genre"
+                  ? `Recommended ${track.sourceGenre} genre`
+                  : track.source === "mood"
+                    ? `Matches your ${track.sourceMood} mood`
+                    : "Recommended for you"),
+            });
+          } else {
+            // Keep track even without preview but with lower priority
+            enrichedTracks.push({
+              ...track,
+              title: track.name,
+              preview_url: null,
+              preview: null,
+              album: {
+                title: "Unknown Album",
+                name: "Unknown Album",
+                cover_big:
+                  "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=500&h=500&fit=crop",
+              },
+            });
+          }
+        } else {
+          // Fallback: keep the Last.fm track without preview
           enrichedTracks.push({
-            ...deezerTrack,
-            title: deezerTrack.title,
-            name: deezerTrack.title, // For compatibility
-            artist: { name: deezerTrack.artist.name },
-            artists: [{ name: deezerTrack.artist.name }],
+            ...track,
+            title: track.name,
+            preview_url: null,
+            preview: null,
             album: {
-              title: deezerTrack.album?.title || "Unknown Album",
-              name: deezerTrack.album?.title || "Unknown Album",
+              title: "Unknown Album",
+              name: "Unknown Album",
               cover_big:
-                deezerTrack.album?.cover_big ||
-                deezerTrack.artist?.picture_big ||
                 "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=500&h=500&fit=crop",
             },
-            preview_url: deezerTrack.preview,
-            preview: deezerTrack.preview,
-            duration: deezerTrack.duration,
-            lastfm_reason:
-              track.reason || "Recommended based on your preferences",
           });
-
-          // Add small delay to avoid rate limiting
-          await new Promise((resolve) => setTimeout(resolve, 100));
         }
       } catch (error) {
-        console.error(
-          `Error enriching track ${track.name || track.title}:`,
-          error,
-        );
+        console.error(`Error enriching track ${track.name}:`, error);
+        // Still include the track as fallback
+        enrichedTracks.push({
+          ...track,
+          title: track.name,
+          preview_url: null,
+          preview: null,
+          album: {
+            title: "Unknown Album",
+            name: "Unknown Album",
+            cover_big:
+              "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=500&h=500&fit=crop",
+          },
+        });
       }
     }
 
-    return enrichedTracks;
+    // Prioritize tracks with previews
+    const withPreviews = enrichedTracks.filter((t) => t.preview).slice(0, 25);
+    const withoutPreviews = enrichedTracks
+      .filter((t) => !t.preview)
+      .slice(0, 5);
+
+    return [...withPreviews, ...withoutPreviews].slice(0, 30); // Return final deck
   };
 
   const handleBackToStart = () => {
     setFlowState("onboarding");
     setGeneratedDeck([]);
+    setLikedTracks([]);
+    setShowResults(false);
     setLoadingProgress(0);
     setLoadingMessage("");
+  };
+
+  // Handle saving a track (passed to SwipeInterface)
+  const handleSaveTrack = (track) => {
+    setLikedTracks((prev) => [...prev, track]);
+  };
+
+  // Handle viewing results
+  const handleViewResults = () => {
+    setShowResults(true);
   };
 
   return (
@@ -170,7 +234,7 @@ const App = () => {
             </div>
           </div>
 
-          {flowState === "swiping" && (
+          {(flowState === "swiping" || showResults) && (
             <button
               onClick={handleBackToStart}
               className="text-white/60 hover:text-white text-sm font-medium transition-colors"
@@ -202,8 +266,23 @@ const App = () => {
               />
             )}
 
-            {flowState === "swiping" && (
-              <SwipeInterface deck={generatedDeck} onBack={handleBackToStart} />
+            {flowState === "swiping" && !showResults && (
+              <SwipeInterface
+                deck={generatedDeck}
+                onBack={handleBackToStart}
+                onSave={handleSaveTrack} // Pass save handler
+                onViewResults={handleViewResults} // Pass results handler
+                savedCount={likedTracks.length}
+                likedTracks={likedTracks} // Pass liked tracks down
+              />
+            )}
+
+            {showResults && (
+              <ResultsView
+                likedTracks={likedTracks}
+                onBack={() => setShowResults(false)}
+                onStartNew={handleBackToStart}
+              />
             )}
           </AnimatePresence>
         </div>
