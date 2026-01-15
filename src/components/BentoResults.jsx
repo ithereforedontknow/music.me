@@ -334,41 +334,13 @@ const BentoResults = ({ likedTracks, onBack, onStartNew }) => {
             <div className="text-sm text-gray-400">Minutes</div>
           </div>
 
-          {/* Export Actions */}
-          <div className="relative group">
-            <div
-              className="bento-card flex flex-col items-center justify-center p-4 gap-2 cursor-pointer hover:bg-white/5 transition-colors"
-              onClick={handleExportText}
-            >
-              <Download className="w-6 h-6 text-purple-400" />
-              <span className="text-sm font-medium text-white">Export TXT</span>
-            </div>
-            <div className="absolute top-2 right-2">
-              <div className="relative">
-                <div
-                  className="bento-card flex items-center justify-center w-10 h-10 bg-purple-600 hover:bg-purple-700 transition-colors cursor-pointer"
-                  onClick={handleExportPNG}
-                  disabled={exporting}
-                >
-                  {exporting ? (
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <span className="text-white font-bold">PNG</span>
-                  )}
-                </div>
-                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                  Export as PNG
-                </div>
-              </div>
-            </div>
-          </div>
-
           <div
             className="bento-card flex flex-col items-center justify-center p-4 gap-2 cursor-pointer hover:bg-white/5 transition-colors"
-            onClick={handleShare}
+            onClick={handleExportPNG}
+            disabled={exporting}
           >
-            <Share2 className="w-6 h-6 text-purple-400" />
-            <span className="text-sm font-medium text-white">Share</span>
+            <Download className="w-6 h-6 text-purple-400" />{" "}
+            <span className="text-sm font-medium text-white">Export</span>
           </div>
         </div>
 
