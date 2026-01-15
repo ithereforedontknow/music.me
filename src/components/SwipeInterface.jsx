@@ -11,6 +11,8 @@ import {
   ListMusic,
   VolumeX,
   AlertCircle,
+  Eye,
+  Plus,
 } from "lucide-react";
 
 const SwipeInterface = ({
@@ -211,7 +213,7 @@ const SwipeInterface = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90"
             onClick={() => {
               setShowMaxLikesModal(false);
               setPendingSwipeAction(null);
@@ -221,45 +223,71 @@ const SwipeInterface = ({
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
-              className="bg-gray-900 border border-white/20 rounded-2xl p-6 max-w-sm w-full"
+              className="relative bg-[#060010] border border-purple-500/40 rounded-2xl p-8 max-w-md w-full shadow-lg"
               onClick={(e) => e.stopPropagation()}
+              style={{
+                boxShadow: "0 0 60px rgba(132, 0, 255, 0.3)",
+              }}
             >
-              <div className="text-center mb-6">
-                <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
-                  <Heart className="w-8 h-8 text-green-400" />
+              {/* Simplified decorative corners */}
+              <div className="absolute top-0 left-0 w-4 h-4 border-t border-l border-purple-500/60 rounded-tl-lg"></div>
+              <div className="absolute top-0 right-0 w-4 h-4 border-t border-r border-purple-500/60 rounded-tr-lg"></div>
+              <div className="absolute bottom-0 left-0 w-4 h-4 border-b border-l border-purple-500/60 rounded-bl-lg"></div>
+              <div className="absolute bottom-0 right-0 w-4 h-4 border-b border-r border-purple-500/60 rounded-br-lg"></div>
+
+              <div className="text-center mb-8">
+                {/* Simplified icon - removed animation to reduce lag */}
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-purple-900/40 border border-purple-500/40 flex items-center justify-center">
+                  <Heart className="w-8 h-8 text-purple-300" />
                 </div>
-                <h3 className="text-xl font-bold text-white mb-2">
-                  Bento is getting full!
+
+                <h3 className="text-2xl font-bold text-white mb-3">
+                  Your Bento is Full!
                 </h3>
-                <p className="text-gray-400">
-                  You've saved {likedTracks.length} tracks. Add more anyway?
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-full border border-white/10 mb-3">
+                  <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                  <p className="text-sm text-white">
+                    {likedTracks.length} tracks saved
+                  </p>
+                </div>
+                <p className="text-gray-300 text-sm">
+                  Continue adding tracks or view your complete bento.
                 </p>
               </div>
 
-              <div className="flex gap-3">
+              <div className="space-y-2">
+                <button
+                  onClick={() => handleModalChoice("add-more")}
+                  className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add More Tracks</span>
+                </button>
+
+                <button
+                  onClick={() => handleModalChoice("view-bento")}
+                  className="w-full py-3 bg-white/10 hover:bg-white/20 text-white rounded-lg font-medium transition-colors border border-white/20 flex items-center justify-center gap-2"
+                >
+                  <Eye className="w-4 h-4" />
+                  <span>View My Bento</span>
+                </button>
+
                 <button
                   onClick={() => {
                     setShowMaxLikesModal(false);
                     setPendingSwipeAction(null);
                   }}
-                  className="flex-1 py-3 bg-white/10 hover:bg-white/20 rounded-xl transition-colors text-white"
+                  className="w-full py-3 bg-transparent hover:bg-white/5 text-gray-400 hover:text-white rounded-lg font-medium transition-colors border border-gray-700"
                 >
-                  Cancel
+                  Continue Swiping
                 </button>
+              </div>
 
-                <button
-                  onClick={() => handleModalChoice("add-more")}
-                  className="flex-1 py-3 bg-green-500 hover:bg-green-600 rounded-xl font-medium transition-colors text-white"
-                >
-                  Add More
-                </button>
-
-                <button
-                  onClick={() => handleModalChoice("view-bento")}
-                  className="flex-1 py-3 bg-blue-500 hover:bg-blue-600 rounded-xl font-medium transition-colors text-white"
-                >
-                  View Bento
-                </button>
+              {/* Simplified bottom element */}
+              <div className="mt-6 pt-3 border-t border-white/10">
+                <p className="text-xs text-gray-500 text-center">
+                  Music collection complete
+                </p>
               </div>
             </motion.div>
           </motion.div>
@@ -317,12 +345,19 @@ const SwipeInterface = ({
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 1.2 }}
-            className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none ${
-              swipeDirection === "right" ? "text-green-500" : "text-red-500"
+            className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none ${
+              swipeDirection === "right" ? "text-purple-400" : "text-gray-400"
             }`}
           >
-            <div className="text-6xl">
-              {swipeDirection === "right" ? "✓" : "✕"}
+            <div className="text-7xl font-bold opacity-90">
+              {swipeDirection === "right" ? "❤️" : "✕"}
+            </div>
+            <div
+              className={`text-lg font-bold mt-2 ${
+                swipeDirection === "right" ? "text-purple-300" : "text-gray-300"
+              }`}
+            >
+              {swipeDirection === "right" ? "Added!" : "Skipped"}
             </div>
           </motion.div>
         )}
@@ -337,7 +372,7 @@ const SwipeInterface = ({
             handleSwipe(info.offset.x > 0 ? "right" : "left");
           }
         }}
-        className="relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl overflow-hidden"
+        className="relative bg-[#060010] border border-purple-500/30 rounded-2xl overflow-hidden"
         animate={{
           x:
             swipeDirection === "left"
@@ -353,7 +388,16 @@ const SwipeInterface = ({
                 : 0,
         }}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        style={{
+          boxShadow: "0 0 40px rgba(132, 0, 255, 0.2)",
+        }}
       >
+        {/* Decorative corners */}
+        <div className="absolute top-0 left-0 w-3 h-3 border-t border-l border-purple-500/50 rounded-tl-md"></div>
+        <div className="absolute top-0 right-0 w-3 h-3 border-t border-r border-purple-500/50 rounded-tr-md"></div>
+        <div className="absolute bottom-0 left-0 w-3 h-3 border-b border-l border-purple-500/50 rounded-bl-md"></div>
+        <div className="absolute bottom-0 right-0 w-3 h-3 border-b border-r border-purple-500/50 rounded-br-md"></div>
+
         {/* Album art */}
         <div className="aspect-square relative overflow-hidden">
           <img
@@ -365,116 +409,93 @@ const SwipeInterface = ({
             alt={currentTrack.title || currentTrack.name}
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
 
-          {/* Play overlay */}
-          <button
-            onClick={togglePlay}
-            className={`absolute ... ${
-              hasAudio
-                ? "bg-white hover:bg-gray-100"
-                : "bg-red-500/40 cursor-not-allowed"
-            }`}
-          >
-            {!hasAudio ? (
-              <VolumeX className="w-6 h-6 text-black" />
-            ) : isPlaying ? (
-              <Pause className="w-6 h-6 text-black" />
-            ) : (
-              <Play className="w-6 h-6 text-black ml-1" />
-            )}
-          </button>
-        </div>
-
-        {/* Track info */}
-        <div className="p-6 space-y-4">
-          <div>
+          {/* Track info overlay */}
+          <div className="absolute bottom-4 left-4 right-4">
             <h3 className="text-xl font-bold text-white truncate">
               {currentTrack.title || currentTrack.name}
             </h3>
-            <p className="text-gray-400 text-sm truncate">
+            <p className="text-gray-300 text-sm truncate">
               {currentTrack.artist?.name ||
                 currentTrack.artists?.map((a) => a.name).join(", ")}
             </p>
           </div>
 
-          {/* Quick stats */}
-          <div className="flex items-center gap-4 text-sm text-gray-400">
-            {currentTrack.album && (
-              <div className="flex items-center gap-1">
-                <Music className="w-4 h-4" />
-                <span className="truncate">
-                  {currentTrack.album.title || currentTrack.album.name}
-                </span>
-              </div>
+          {/* Play overlay */}
+          <button
+            onClick={togglePlay}
+            className={`absolute top-4 right-4 w-12 h-12 rounded-full flex items-center justify-center ${
+              hasAudio
+                ? "bg-purple-600 hover:bg-purple-700"
+                : "bg-gray-700 cursor-not-allowed"
+            } transition-colors`}
+          >
+            {!hasAudio ? (
+              <VolumeX className="w-5 h-5 text-white" />
+            ) : isPlaying ? (
+              <Pause className="w-5 h-5 text-white" />
+            ) : (
+              <Play className="w-5 h-5 text-white ml-0.5" />
             )}
-            {currentTrack.duration && (
-              <span>
-                {Math.floor(currentTrack.duration / 60)}:
-                {(currentTrack.duration % 60).toString().padStart(2, "0")}
-              </span>
-            )}
-          </div>
+          </button>
+        </div>
 
-          {/* CLEARER Action buttons */}
-          <div className="flex gap-3 pt-4">
+        {/* Action buttons */}
+        <div className="p-6">
+          <div className="flex gap-3">
             <button
               onClick={() => handleSwipe("left")}
-              className="flex-1 py-4 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-xl flex flex-col items-center justify-center gap-2 transition-colors group"
+              className="flex-1 py-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl flex flex-col items-center justify-center gap-2 transition-colors"
             >
-              <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center group-hover:bg-red-500/30 transition-colors">
-                <X className="w-5 h-5 text-red-400" />
+              <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
+                <X className="w-5 h-5 text-gray-300" />
               </div>
-              <span className="text-sm font-bold text-red-400">
-                Not my vibe
-              </span>
-              {/* <span className="text-xs text-gray-400">REMOVE to Bento</span>*/}
+              <span className="text-sm font-medium text-gray-300">Skip</span>
             </button>
 
             <button
               onClick={() => handleSwipe("right")}
-              className="flex-1 py-4 bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 rounded-xl flex flex-col items-center justify-center gap-2 transition-colors group"
+              className="flex-1 py-4 bg-purple-600 hover:bg-purple-700 border border-purple-500/30 rounded-xl flex flex-col items-center justify-center gap-2 transition-colors"
             >
-              <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center group-hover:bg-green-500/30 transition-colors">
-                <Heart className="w-5 h-5 text-green-400" />
+              <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
+                <Heart className="w-5 h-5 text-white" />
               </div>
-              <span className="text-sm font-bold text-green-400">
+              <span className="text-sm font-medium text-white">
                 Add to Bento
               </span>
-              {/* <span className="text-xs text-gray-400">Add to Bento</span>*/}
             </button>
           </div>
         </div>
       </motion.div>
 
       {/* Navigation controls */}
-      <div className="flex items-center justify-center gap-6 px-4">
+      <div className="flex items-center justify-center gap-4 px-4 py-3 bg-white/5 border border-white/10 rounded-xl">
         <button
           onClick={handlePrevious}
           disabled={currentIndex === 0}
-          className={`p-3 rounded-full ${
+          className={`p-2 rounded-lg ${
             currentIndex === 0
               ? "text-white/20 cursor-not-allowed"
               : "text-white hover:bg-white/10"
-          }`}
+          } transition-colors`}
         >
           <SkipBack className="w-5 h-5" />
         </button>
 
-        <div className="text-center">
-          <p className="text-sm text-gray-400 mb-2">Swipe or tap buttons</p>
-          <div className="flex items-center gap-6">
+        <div className="flex-1 text-center">
+          <div className="flex items-center justify-center gap-6">
             <div className="flex flex-col items-center">
-              <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center mb-1">
-                <X className="w-4 h-4 text-red-400" />
+              <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center mb-1">
+                <X className="w-3 h-3 text-gray-300" />
               </div>
-              <span className="text-xs text-red-400">Swipe left</span>
+              <span className="text-xs text-gray-300">Swipe left</span>
             </div>
             <div className="flex flex-col items-center">
-              <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center mb-1">
-                <Heart className="w-4 h-4 text-green-400" />
+              <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center mb-1">
+                <Heart className="w-3 h-3 text-purple-300" />
               </div>
-              <span className="text-xs text-green-400">Swipe right</span>
+              <span className="text-xs text-purple-300">Swipe right</span>
             </div>
           </div>
         </div>
@@ -482,19 +503,25 @@ const SwipeInterface = ({
         <button
           onClick={handleNext}
           disabled={currentIndex === deck.length - 1}
-          className={`p-3 rounded-full ${
+          className={`p-2 rounded-lg ${
             currentIndex === deck.length - 1
               ? "text-white/20 cursor-not-allowed"
               : "text-white hover:bg-white/10"
-          }`}
+          } transition-colors`}
         >
           <SkipForward className="w-5 h-5" />
         </button>
       </div>
+
+      {/* Audio warning */}
       {!hasAudio && (
-        <span className="absolute bottom-4 text-xs text-red-400">
-          No preview available
-        </span>
+        <div className="px-4">
+          <div className="py-2 bg-white/5 border border-white/10 rounded-lg text-center">
+            <span className="text-xs text-gray-400">
+              No audio preview available
+            </span>
+          </div>
+        </div>
       )}
 
       {/* Spotify link */}
@@ -514,24 +541,34 @@ const SwipeInterface = ({
           </span>
         </a>
       </div>
+
+      {/* Bento preview */}
       {likedTracks.length > 0 && (
         <div className="px-4">
-          <h4 className="text-sm text-gray-400 mb-2">
-            Your Bento ({likedTracks.length})
-          </h4>
-
-          <div className="grid grid-cols-5 gap-2">
-            {likedTracks.slice(0, 10).map((track, i) => (
-              <div
-                key={i}
-                className="aspect-square rounded-lg overflow-hidden border border-white/10"
-              >
-                <img
-                  src={track.album?.cover_big}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            ))}
+          <div className="py-3 border-t border-white/10">
+            <h4 className="text-sm text-gray-400 mb-2">
+              Your Bento ({likedTracks.length})
+            </h4>
+            <div className="grid grid-cols-5 gap-2">
+              {likedTracks.slice(0, 10).map((track, i) => (
+                <div
+                  key={i}
+                  className="aspect-square rounded-lg overflow-hidden border border-white/10 bg-white/5"
+                >
+                  <img
+                    src={
+                      track.album?.cover_big ||
+                      "https://via.placeholder.com/100"
+                    }
+                    className="w-full h-full object-cover"
+                    alt=""
+                    onError={(e) => {
+                      e.target.src = "https://via.placeholder.com/100";
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
