@@ -1,11 +1,27 @@
-import { useState } from "react";
-import { Play, ExternalLink, Download, Share2, Heart, X } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import {
+  Play,
+  ExternalLink,
+  Download,
+  Share2,
+  Heart,
+  X,
+  AlertCircle,
+} from "lucide-react";
+import html2canvas from "html2canvas";
 
 const BentoResults = ({ likedTracks, onBack, onStartNew }) => {
   const [selectedTrack, setSelectedTrack] = useState(null);
   const [playingAudio, setPlayingAudio] = useState(null);
+  const [exporting, setExporting] = useState(false);
+  const bentoGridRef = useRef(null);
 
   const handlePlayPreview = (track, index) => {
+    if (!track.preview && !track.preview_url) {
+      alert("No audio preview available for this track");
+      return;
+    }
+
     if (playingAudio) {
       playingAudio.pause();
     }
@@ -25,7 +41,45 @@ const BentoResults = ({ likedTracks, onBack, onStartNew }) => {
     }
   };
 
-  const handleExport = () => {
+  // Clean up audio on unmount
+  useEffect(() => {
+    return () => {
+      if (playingAudio) {
+        playingAudio.pause();
+      }
+    };
+  }, [playingAudio]);
+
+  // Calculate grid layout based on track count
+  const getGridConfig = () => {
+    const trackCount = likedTracks.length;
+
+    if (trackCount === 0) return { cols: 1, cardSizes: [] };
+
+    // Define card sizes based on track index for visual variety
+    const cardSizes = likedTracks.map((_, index) => {
+      if (trackCount <= 4) {
+        // For small collections, make all cards medium
+        return "medium";
+      }
+
+      // For larger collections, distribute sizes
+      if (index % 7 === 0) return "large";
+      if (index % 5 === 0) return "wide";
+      if (index % 6 === 0) return "tall";
+      return "medium";
+    });
+
+    // Determine number of columns based on track count
+    let cols;
+    if (trackCount <= 4) cols = 2;
+    else if (trackCount <= 9) cols = 3;
+    else cols = 4;
+
+    return { cols, cardSizes };
+  };
+
+  const handleExportText = () => {
     const playlist = likedTracks
       .map(
         (track, i) =>
@@ -42,6 +96,45 @@ const BentoResults = ({ likedTracks, onBack, onStartNew }) => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  const handleExportPNG = async () => {
+    if (!bentoGridRef.current) return;
+
+    setExporting(true);
+
+    try {
+      // Hide non-essential elements during capture
+      const originalStyle = bentoGridRef.current.style;
+      const originalPointerEvents = bentoGridRef.current.style.pointerEvents;
+      bentoGridRef.current.style.pointerEvents = "none";
+
+      // Capture the bento grid
+      const canvas = await html2canvas(bentoGridRef.current, {
+        backgroundColor: "#060010",
+        scale: 2, // Higher resolution
+        useCORS: true, // For cross-origin images
+        logging: false,
+        allowTaint: true,
+        foreignObjectRendering: true,
+      });
+
+      // Create download link
+      const link = document.createElement("a");
+      link.download = `soundswipe-bento-${Date.now()}.png`;
+      link.href = canvas.toDataURL("image/png", 1.0);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Restore original styles
+      bentoGridRef.current.style.pointerEvents = originalPointerEvents;
+    } catch (error) {
+      console.error("Error exporting to PNG:", error);
+      alert("Failed to export PNG. Please try again.");
+    } finally {
+      setExporting(false);
+    }
   };
 
   const handleShare = async () => {
@@ -69,6 +162,8 @@ const BentoResults = ({ likedTracks, onBack, onStartNew }) => {
       alert("Playlist copied to clipboard!");
     }
   };
+
+  const { cols, cardSizes } = getGridConfig();
 
   return (
     <div className="w-full max-w-6xl mx-auto px-4 py-8">
@@ -104,27 +199,52 @@ const BentoResults = ({ likedTracks, onBack, onStartNew }) => {
             animation: fadeInScale 0.3s ease-out forwards;
           }
 
+          /* Dynamic grid based on track count */
           .bento-grid {
             display: grid;
             gap: 0.5rem;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             grid-auto-rows: 180px;
           }
 
-          @media (min-width: 640px) {
+          /* Card size classes */
+          .bento-card-large {
+            grid-column: span 2;
+            grid-row: span 2;
+          }
+
+          .bento-card-wide {
+            grid-column: span 2;
+          }
+
+          .bento-card-tall {
+            grid-row: span 2;
+          }
+
+          /* Responsive adjustments */
+          @media (max-width: 639px) {
             .bento-grid {
               grid-template-columns: repeat(2, 1fr);
             }
-          }
 
-          @media (min-width: 768px) {
-            .bento-grid {
-              grid-template-columns: repeat(3, 1fr);
+            .bento-card-large,
+            .bento-card-wide,
+            .bento-card-tall {
+              grid-column: span 1;
+              grid-row: span 1;
             }
           }
 
-          @media (min-width: 1024px) {
-            .bento-grid {
+          /* Desktop grid configurations */
+          @media (min-width: 640px) {
+            .bento-grid-cols-2 {
+              grid-template-columns: repeat(2, 1fr);
+            }
+
+            .bento-grid-cols-3 {
+              grid-template-columns: repeat(3, 1fr);
+            }
+
+            .bento-grid-cols-4 {
               grid-template-columns: repeat(4, 1fr);
             }
           }
@@ -161,28 +281,6 @@ const BentoResults = ({ likedTracks, onBack, onStartNew }) => {
             opacity: 1;
           }
 
-          .bento-card-large {
-            grid-column: span 2;
-            grid-row: span 2;
-          }
-
-          .bento-card-wide {
-            grid-column: span 2;
-          }
-
-          .bento-card-tall {
-            grid-row: span 2;
-          }
-
-          @media (max-width: 639px) {
-            .bento-card-large,
-            .bento-card-wide,
-            .bento-card-tall {
-              grid-column: span 1;
-              grid-row: span 1;
-            }
-          }
-
           .header-card {
             background: linear-gradient(135deg, rgba(132, 0, 255, 0.2) 0%, rgba(46, 24, 78, 0.2) 100%);
             border: 1px solid rgba(132, 0, 255, 0.3);
@@ -210,7 +308,7 @@ const BentoResults = ({ likedTracks, onBack, onStartNew }) => {
 
       <div className="animate-fade-in-up">
         {/* Header Card */}
-        <div className="bento-grid mb-6">
+        <div className="bento-grid bento-grid-cols-4 mb-6">
           <div className="bento-card header-card bento-card-wide flex flex-col items-center justify-center p-6 text-center">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-pink-500 to-purple-600 mb-3">
               <Heart className="w-8 h-8 text-white" />
@@ -222,14 +320,6 @@ const BentoResults = ({ likedTracks, onBack, onStartNew }) => {
               {likedTracks.length} track{likedTracks.length !== 1 ? "s" : ""}{" "}
               saved
             </p>
-          </div>
-
-          {/* Stats Cards */}
-          <div className="bento-card stats-card flex flex-col items-center justify-center p-4">
-            <div className="text-3xl font-bold text-white mb-1">
-              {likedTracks.length}
-            </div>
-            <div className="text-sm text-gray-400">Tracks</div>
           </div>
 
           <div className="bento-card stats-card flex flex-col items-center justify-center p-4">
@@ -244,17 +334,37 @@ const BentoResults = ({ likedTracks, onBack, onStartNew }) => {
             <div className="text-sm text-gray-400">Minutes</div>
           </div>
 
-          {/* Action Cards */}
-          <div
-            className="bento-card flex flex-col items-center justify-center p-4 gap-2"
-            onClick={handleExport}
-          >
-            <Download className="w-6 h-6 text-purple-400" />
-            <span className="text-sm font-medium text-white">Export</span>
+          {/* Export Actions */}
+          <div className="relative group">
+            <div
+              className="bento-card flex flex-col items-center justify-center p-4 gap-2 cursor-pointer hover:bg-white/5 transition-colors"
+              onClick={handleExportText}
+            >
+              <Download className="w-6 h-6 text-purple-400" />
+              <span className="text-sm font-medium text-white">Export TXT</span>
+            </div>
+            <div className="absolute top-2 right-2">
+              <div className="relative">
+                <div
+                  className="bento-card flex items-center justify-center w-10 h-10 bg-purple-600 hover:bg-purple-700 transition-colors cursor-pointer"
+                  onClick={handleExportPNG}
+                  disabled={exporting}
+                >
+                  {exporting ? (
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <span className="text-white font-bold">PNG</span>
+                  )}
+                </div>
+                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                  Export as PNG
+                </div>
+              </div>
+            </div>
           </div>
 
           <div
-            className="bento-card flex flex-col items-center justify-center p-4 gap-2"
+            className="bento-card flex flex-col items-center justify-center p-4 gap-2 cursor-pointer hover:bg-white/5 transition-colors"
             onClick={handleShare}
           >
             <Share2 className="w-6 h-6 text-purple-400" />
@@ -263,108 +373,165 @@ const BentoResults = ({ likedTracks, onBack, onStartNew }) => {
         </div>
 
         {/* Track Cards Grid */}
-        <div className="bento-grid mb-6">
-          {likedTracks.map((track, index) => {
-            const isLarge = index % 7 === 0;
-            const isWide = index % 5 === 0 && !isLarge;
-            const isTall = index % 6 === 0 && !isLarge && !isWide;
-
-            return (
-              <div
-                key={index}
-                className={`bento-card animate-fade-in-scale ${isLarge ? "bento-card-large" : ""} ${isWide ? "bento-card-wide" : ""} ${isTall ? "bento-card-tall" : ""}`}
-                style={{ animationDelay: `${index * 0.05}s` }}
-                onMouseMove={(e) => {
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const x = ((e.clientX - rect.left) / rect.width) * 100;
-                  const y = ((e.clientY - rect.top) / rect.height) * 100;
-                  e.currentTarget.style.setProperty("--mouse-x", `${x}%`);
-                  e.currentTarget.style.setProperty("--mouse-y", `${y}%`);
-                }}
+        <div
+          ref={bentoGridRef}
+          className={`bento-grid bento-grid-cols-${cols} mb-6`}
+        >
+          {likedTracks.length === 0 ? (
+            <div className="bento-card-large col-span-full flex flex-col items-center justify-center p-8 text-center">
+              <AlertCircle className="w-16 h-16 text-gray-500 mb-4" />
+              <h3 className="text-xl font-semibold text-white mb-2">
+                No Tracks Yet
+              </h3>
+              <p className="text-gray-400 mb-6">
+                Start swiping to add tracks to your bento box!
+              </p>
+              <button
+                onClick={onStartNew}
+                className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors"
               >
-                {/* Album Art Background */}
+                Start Discovery
+              </button>
+            </div>
+          ) : (
+            likedTracks.map((track, index) => {
+              const sizeClass = cardSizes[index];
+              const hasAudio = track.preview || track.preview_url;
+
+              return (
                 <div
-                  className="absolute inset-0 bg-cover bg-center opacity-20"
-                  style={{
-                    backgroundImage: `url(${track.album?.cover_big || track.album?.images?.[0]?.url})`,
+                  key={index}
+                  className={`bento-card animate-fade-in-scale ${
+                    sizeClass === "large"
+                      ? "bento-card-large"
+                      : sizeClass === "wide"
+                        ? "bento-card-wide"
+                        : sizeClass === "tall"
+                          ? "bento-card-tall"
+                          : ""
+                  }`}
+                  style={{ animationDelay: `${index * 0.05}s` }}
+                  onMouseMove={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const x = ((e.clientX - rect.left) / rect.width) * 100;
+                    const y = ((e.clientY - rect.top) / rect.height) * 100;
+                    e.currentTarget.style.setProperty("--mouse-x", `${x}%`);
+                    e.currentTarget.style.setProperty("--mouse-y", `${y}%`);
                   }}
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+                >
+                  {/* Album Art Background */}
+                  <div
+                    className="absolute inset-0 bg-cover bg-center opacity-20"
+                    style={{
+                      backgroundImage: `url(${track.album?.cover_big || track.album?.images?.[0]?.url || ""})`,
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
 
-                {/* Content */}
-                <div className="relative h-full flex flex-col justify-between p-4">
-                  {/* Top Section */}
-                  <div className="flex items-start justify-between gap-2">
-                    <img
-                      src={
-                        track.album?.cover_big || track.album?.images?.[0]?.url
-                      }
-                      className="w-12 h-12 rounded-lg object-cover shadow-lg"
-                      alt={track.title}
-                    />
-                    <div className="flex items-center gap-1">
-                      {track.preview || track.preview_url ? (
-                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                      ) : (
-                        <div className="w-2 h-2 bg-gray-500 rounded-full" />
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Bottom Section */}
-                  <div>
-                    <h4 className="font-semibold text-white text-sm mb-1 line-clamp-2">
-                      {track.title || track.name}
-                    </h4>
-                    <p className="text-xs text-gray-400 line-clamp-1 mb-3">
-                      {track.artist?.name ||
-                        track.artists?.map((a) => a.name).join(", ")}
-                    </p>
-
-                    {/* Actions */}
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handlePlayPreview(track, index);
+                  {/* Content */}
+                  <div className="relative h-full flex flex-col justify-between p-4">
+                    {/* Top Section */}
+                    <div className="flex items-start justify-between gap-2">
+                      <img
+                        src={
+                          track.album?.cover_big ||
+                          track.album?.images?.[0]?.url
+                        }
+                        className="w-12 h-12 rounded-lg object-cover shadow-lg"
+                        alt={track.title}
+                        onError={(e) => {
+                          e.target.style.display = "none";
                         }}
-                        disabled={!track.preview && !track.preview_url}
-                        className="p-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-700 disabled:opacity-50 rounded-full transition-colors"
-                      >
-                        {selectedTrack === index && playingAudio ? (
-                          <X className="w-3 h-3 text-white" />
+                      />
+                      <div className="flex items-center gap-1">
+                        {hasAudio ? (
+                          <div className="flex items-center gap-1">
+                            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                            <span className="text-xs text-green-500">
+                              Audio
+                            </span>
+                          </div>
                         ) : (
-                          <Play className="w-3 h-3 text-white" />
+                          <div
+                            className="flex items-center gap-1"
+                            title="No audio preview available"
+                          >
+                            <div className="w-2 h-2 bg-gray-500 rounded-full" />
+                            <span className="text-xs text-gray-500">
+                              No Audio
+                            </span>
+                          </div>
                         )}
-                      </button>
-                      <a
-                        href={`https://open.spotify.com/search/${encodeURIComponent(
-                          `${track.title || track.name} ${track.artist?.name || track.artists?.[0]?.name}`,
-                        )}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
-                      >
-                        <ExternalLink className="w-3 h-3 text-white" />
-                      </a>
+                      </div>
+                    </div>
+
+                    {/* Bottom Section */}
+                    <div>
+                      <h4 className="font-semibold text-white text-sm mb-1 line-clamp-2">
+                        {track.title || track.name}
+                      </h4>
+                      <p className="text-xs text-gray-400 line-clamp-1 mb-3">
+                        {track.artist?.name ||
+                          track.artists?.map((a) => a.name).join(", ")}
+                      </p>
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePlayPreview(track, index);
+                          }}
+                          disabled={!hasAudio}
+                          className={`p-2 rounded-full transition-colors ${
+                            hasAudio
+                              ? "bg-purple-600 hover:bg-purple-700"
+                              : "bg-gray-700 opacity-50 cursor-not-allowed"
+                          }`}
+                          title={
+                            !hasAudio
+                              ? "No audio preview available"
+                              : "Play preview"
+                          }
+                        >
+                          {selectedTrack === index && playingAudio ? (
+                            <X className="w-3 h-3 text-white" />
+                          ) : (
+                            <Play className="w-3 h-3 text-white" />
+                          )}
+                        </button>
+                        <a
+                          href={`https://open.spotify.com/search/${encodeURIComponent(
+                            `${track.title || track.name} ${track.artist?.name || track.artists?.[0]?.name}`,
+                          )}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+                          title="Open in Spotify"
+                        >
+                          <ExternalLink className="w-3 h-3 text-white" />
+                        </a>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
 
         {/* Bottom Action */}
-        <div className="text-center">
-          <button
-            onClick={onStartNew}
-            className="px-8 py-3 bg-white text-black rounded-xl font-medium hover:bg-gray-100 transition-colors"
-          >
-            Start New Discovery
-          </button>
-        </div>
+        {likedTracks.length > 0 && (
+          <div className="text-center">
+            <button
+              onClick={onStartNew}
+              className="px-8 py-3 bg-white text-black rounded-xl font-medium hover:bg-gray-100 transition-colors"
+            >
+              Start New Discovery
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

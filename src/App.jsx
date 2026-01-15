@@ -470,7 +470,7 @@ const App = () => {
               <Music className="w-5 h-5 text-black" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-white">SoundSwipe</h1>
+              <h1 className="text-xl font-bold text-white">music.me</h1>
               <p className="text-xs text-gray-400">Discover music</p>
             </div>
           </div>
@@ -487,7 +487,7 @@ const App = () => {
       </motion.header>
 
       <main className="relative z-10 pt-24 px-4 pb-12">
-        <div className=" mx-auto">
+        <div className="max-w-6xl mx-auto">
           <AnimatePresence mode="wait">
             {flowState === "logo" && (
               <div className="flex items-center justify-center min-h-[60vh]">

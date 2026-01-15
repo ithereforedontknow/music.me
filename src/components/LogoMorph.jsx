@@ -45,7 +45,7 @@ const LogoMorph = ({ onComplete }) => {
         animate={{ opacity: 1 }}
         transition={{ delay: 0.4 }}
       >
-        <h1 className="text-3xl font-black text-white mb-2">SoundSwipe</h1>
+        <h1 className="text-3xl font-black text-white mb-2">music.me</h1>
       </motion.div>*/}
     </div>
   );
