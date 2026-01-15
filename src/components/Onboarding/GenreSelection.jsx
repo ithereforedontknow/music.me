@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 
 // Last.fm compatible genres
-const GENRES = [
+export const GENRES = [
   { id: "rock", icon: Guitar, label: "Rock", color: "text-red-500" },
   { id: "pop", icon: Music, label: "Pop", color: "text-pink-500" },
   {

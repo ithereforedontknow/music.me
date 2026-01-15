@@ -5,6 +5,10 @@ import MoodSelection from "./MoodSelection";
 import GenreSelection from "./GenreSelection";
 import ReferenceTrack from "./ReferenceTrack";
 
+// Import MOODS and GENRES from their respective files
+import { MOODS } from "./MoodSelection";
+import { GENRES } from "./GenreSelection";
+
 const OnboardingFlow = ({ onComplete }) => {
   const [step, setStep] = useState(0);
   const [selections, setSelections] = useState({
@@ -43,10 +47,30 @@ const OnboardingFlow = ({ onComplete }) => {
   };
 
   const handleSkip = () => {
+    // Generate random moods and genres for "Surprise Me"
+    const randomMoods = [...MOODS]
+      .sort(() => 0.5 - Math.random())
+      .slice(0, 2)
+      .map((mood) => mood.id);
+
+    const randomGenres = [...GENRES]
+      .sort(() => 0.5 - Math.random())
+      .slice(0, 2)
+      .map((genre) => genre.id);
+
+    onComplete({
+      moods: randomMoods,
+      genres: randomGenres,
+      referenceTrack: null,
+      usedSurprise: true,
+    });
+  };
+
+  const handleSkipReference = () => {
+    // This handles skipping just the reference track step
     onComplete({
       ...selections,
-      ReferenceTrack: null,
-      usedSurprise: true,
+      referenceTrack: null,
     });
   };
 
@@ -96,6 +120,7 @@ const OnboardingFlow = ({ onComplete }) => {
             <CurrentStep
               onComplete={handleStepComplete}
               initialData={selections}
+              onSkip={handleSkipReference}
             />
           </motion.div>
         </AnimatePresence>

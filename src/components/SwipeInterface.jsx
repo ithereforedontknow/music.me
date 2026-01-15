@@ -294,15 +294,11 @@ const SwipeInterface = ({
           <span className="text-sm text-gray-400">
             Track {currentIndex + 1} of {deck.length}
           </span>
-          {savedCount > 0 && (
-            <button
-              onClick={onViewResults} // Already correct
-              className="text-sm text-white hover:text-gray-300 transition-colors flex items-center gap-1"
-            >
-              <ListMusic className="w-4 h-4" />
-              <span>{likedTracks.length} saved</span>{" "}
-              {/* Use likedTracks from props */}
-            </button>
+          {likedTracks.length > 0 && (
+            <div className="text-sm text-gray-400 flex items-center gap-1">
+              <Heart className="w-4 h-4" />
+              <span>{likedTracks.length} saved</span>
+            </div>
           )}
         </div>
         <div className="h-1 bg-white/10 rounded-full overflow-hidden">

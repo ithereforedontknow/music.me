@@ -11,7 +11,7 @@ import {
   Clock,
 } from "lucide-react";
 
-const MOODS = [
+export const MOODS = [
   { id: "energetic", icon: Zap, label: "Energetic", color: "text-yellow-500" },
   { id: "chill", icon: Waves, label: "Chill", color: "text-blue-500" },
   { id: "happy", icon: Sun, label: "Happy", color: "text-orange-500" },
