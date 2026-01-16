@@ -22,6 +22,27 @@ const BentoResults = ({ likedTracks, onStartNew }) => {
   const [audioError, setAudioError] = useState(null);
   const bentoGridRef = useRef(null);
 
+  // Add this function at the top of BentoResults component
+  const getTrackImage = (track) => {
+    if (!track) return null;
+
+    // Try your service's image structure first
+    if (track.images?.large) return track.images.large;
+    if (track.images?.medium) return track.images.medium;
+    if (track.images?.small) return track.images.small;
+
+    // Fallback to other possible properties
+    if (track.thumbnail) return track.thumbnail;
+    if (track.album?.cover_big) return track.album.cover_big;
+    if (track.album?.cover_small) return track.album.cover_small;
+
+    // Generate placeholder if no image
+    const placeholderText = encodeURIComponent(
+      (track.name?.charAt(0) || "M") + (track.artist?.name?.charAt(0) || "A"),
+    );
+    return `https://ui-avatars.com/api/?name=${placeholderText}&background=7D5260&color=fff&size=500`;
+  };
+
   const getGridPages = () => {
     if (likedTracks.length === 0) return [];
     const pages = [];
@@ -170,8 +191,9 @@ const BentoResults = ({ likedTracks, onStartNew }) => {
                 Your Music Bento
               </h1>
               <p className="text-gray-600 mt-1">
+                {/* FIXED: Show actual liked tracks count, no limit */}
                 {likedTracks.length > 0
-                  ? `${likedTracks.length} curated tracks`
+                  ? `${likedTracks.length} curated tracks saved`
                   : "Start building your music collection"}
               </p>
             </div>
@@ -192,7 +214,7 @@ const BentoResults = ({ likedTracks, onStartNew }) => {
           )}
         </div>
 
-        {/* Stats */}
+        {/* Stats - FIXED: Show actual count without limit */}
         {likedTracks.length > 0 && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
@@ -289,6 +311,7 @@ const BentoResults = ({ likedTracks, onStartNew }) => {
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                 {pageTracks.map((track, trackIndex) => {
                   const isPlaying = selectedTrack === track.id && playingAudio;
+                  const trackImage = getTrackImage(track);
 
                   return (
                     <motion.div
@@ -304,14 +327,25 @@ const BentoResults = ({ likedTracks, onStartNew }) => {
                         {/* Track Info */}
                         <div className="flex items-start gap-3 mb-3">
                           <div className="relative flex-shrink-0">
-                            <img
-                              src={track.album?.cover_big || track.thumbnail}
-                              className="w-14 h-14 rounded-lg object-cover"
-                              alt={track.title}
-                              onError={(e) => {
-                                e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(track.title || track.name)}&background=4f46e5&color=fff&size=128`;
-                              }}
-                            />
+                            {trackImage ? (
+                              <img
+                                src={trackImage}
+                                className="w-14 h-14 rounded-lg object-cover"
+                                alt={track.title}
+                                onError={(e) => {
+                                  e.target.style.display = "none";
+                                  e.target.parentElement.innerHTML = `
+                                    <div class="w-14 h-14 rounded-lg bg-pink-100 flex items-center justify-center">
+                                      <div class="text-lg">🎵</div>
+                                    </div>
+                                  `;
+                                }}
+                              />
+                            ) : (
+                              <div className="w-14 h-14 rounded-lg bg-pink-100 flex items-center justify-center">
+                                <div className="text-lg">🎵</div>
+                              </div>
+                            )}
                           </div>
 
                           <div className="flex-1 min-w-0">

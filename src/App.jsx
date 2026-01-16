@@ -138,10 +138,30 @@ const App = () => {
     setShowResults(false);
   };
 
-  const handleSaveTrack = (track) => {
-    setLikedTracks((prev) => (prev.length >= 10 ? prev : [...prev, track]));
-  };
+  // const handleSaveTrack = (track) => {
+  //   setLikedTracks((prev) => (prev.length >= 10 ? prev : [...prev, track]));
+  // };
 
+  // Unlimited tracks
+  const handleSaveTrack = (track) => {
+    setLikedTracks((prev) => {
+      // Check if track already exists to prevent duplicates
+      const trackExists = prev.some(
+        (t) =>
+          t.id === track.id ||
+          (t.name === track.name && t.artist?.name === track.artist?.name),
+      );
+
+      if (trackExists) {
+        console.log("Track already exists in bento:", track.name);
+        return prev;
+      }
+
+      console.log("Adding track to bento:", track.name);
+      // Add track without limit
+      return [...prev, track];
+    });
+  };
   return (
     <div className="min-h-screen w-full bg-gradient-to-b from-gray-50 to-white text-gray-800 font-sans overflow-hidden">
       {/* Animated Background Blobs */}
@@ -216,7 +236,7 @@ const App = () => {
             {flowState === "onboarding" && (
               <motion.div
                 key="onboarding"
-                className="bg-white rounded-[28px] p-8 shadow-xl border border-gray-200"
+                className=""
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
@@ -243,7 +263,6 @@ const App = () => {
             {flowState === "swiping" && !showResults && (
               <motion.div
                 key="swiping"
-                className="bg-gray-50 rounded-[28px] p-6 shadow-lg border border-gray-300"
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Play,
@@ -30,21 +30,50 @@ const SwipeInterface = ({
   const [pendingSwipeAction, setPendingSwipeAction] = useState(null);
 
   const currentTrack = deck[currentIndex];
-  const audioUrl = currentTrack?.preview;
-  const hasAudio = Boolean(audioUrl);
-  const MAX_LIKES = 10;
+
+  // Universal image getter for your service
+  const getTrackImage = (track) => {
+    if (!track) return null;
+
+    // Try your service's image structure first
+    if (track.images?.large) return track.images.large;
+    if (track.images?.medium) return track.images.medium;
+    if (track.images?.small) return track.images.small;
+
+    // Fallback to other possible properties
+    if (track.thumbnail) return track.thumbnail;
+    if (track.album?.cover_big) return track.album.cover_big;
+    if (track.album?.cover_small) return track.album.cover_small;
+
+    // Generate placeholder if no image
+    const placeholderText = encodeURIComponent(
+      (track.name?.charAt(0) || "M") + (track.artist?.name?.charAt(0) || "A"),
+    );
+    return `https://ui-avatars.com/api/?name=${placeholderText}&background=7D5260&color=fff&size=500`;
+  };
+
+  const trackImage = currentTrack ? getTrackImage(currentTrack) : null;
+  const hasAudio = Boolean(currentTrack?.preview);
+  const MAX_SUGGESTED = 10;
 
   const handleSwipe = (direction) => {
-    if (direction === "right" && likedTracks.length >= MAX_LIKES) {
-      setPendingSwipeAction({ direction, track: currentTrack });
-      setShowMaxLikesModal(true);
-      return;
+    // Prevent multiple swipes
+    if (swipeDirection) return;
+
+    if (direction === "right") {
+      // Show modal if at "limit" (but we'll allow adding anyway)
+      if (likedTracks.length >= MAX_SUGGESTED) {
+        setPendingSwipeAction({ direction, track: currentTrack });
+        setShowMaxLikesModal(true);
+        return;
+      }
     }
 
     proceedWithSwipe(direction);
   };
 
   const proceedWithSwipe = (direction) => {
+    // Save track first if swiping right
     if (direction === "right" && onSave) {
       onSave(currentTrack);
     }
@@ -64,19 +93,21 @@ const SwipeInterface = ({
   };
 
   const handleModalChoice = (choice) => {
+    setShowMaxLikesModal(false);
+
     if (choice === "add-more" && pendingSwipeAction && onSave) {
+      // Actually save the track
       onSave(pendingSwipeAction.track);
       proceedWithSwipe(pendingSwipeAction.direction);
     } else if (choice === "view-bento") {
       if (onViewResults) onViewResults();
     }
 
-    setShowMaxLikesModal(false);
     setPendingSwipeAction(null);
   };
 
   const togglePlay = () => {
-    if (!hasAudio) {
+    if (!currentTrack?.preview) {
       setShowNoAudioAlert(true);
       setTimeout(() => setShowNoAudioAlert(false), 3000);
       return;
@@ -146,7 +177,7 @@ const SwipeInterface = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
           >
             <motion.div
               initial={{ scale: 0.9 }}
@@ -157,7 +188,7 @@ const SwipeInterface = ({
               <div className="text-center mb-6">
                 <div className="text-5xl mb-4">🍱</div>
                 <h3 className="text-xl font-semibold text-gray-800 mb-3">
-                  Your Bento is Full!
+                  Nice Collection! ({likedTracks.length} tracks)
                 </h3>
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-pink-100 rounded-full mb-4">
                   <p className="text-sm font-medium text-pink-800">
@@ -165,7 +196,7 @@ const SwipeInterface = ({
                   </p>
                 </div>
                 <p className="text-gray-600">
-                  Continue adding or view your complete bento collection!
+                  You can add more tracks or view your collection!
                 </p>
               </div>
 
@@ -176,7 +207,7 @@ const SwipeInterface = ({
                   {...buttonSpring}
                 >
                   <Plus className="w-4 h-4" />
-                  Add More Tracks
+                  Add This Track Anyway
                 </motion.button>
 
                 <motion.button
@@ -252,11 +283,11 @@ const SwipeInterface = ({
           }}
           transition={springExpressive}
         >
-          {/* Album Art */}
-          <div className="aspect-square relative overflow-hidden bg-gray-100">
-            {currentTrack.album?.cover_big || currentTrack.thumbnail ? (
+          {/* Album Art - FIXED: Using proper image getter */}
+          <div className="aspect-square relative overflow-hidden bg-gradient-to-br from-pink-100 to-purple-100">
+            {trackImage ? (
               <img
-                src={currentTrack.album?.cover_big || currentTrack.thumbnail}
+                src={trackImage}
                 alt={currentTrack.title || currentTrack.name}
                 className="w-full h-full object-cover"
                 onError={(e) => {
@@ -273,7 +304,7 @@ const SwipeInterface = ({
                 <div className="text-4xl">🎵</div>
               </div>
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
             {/* Play Button */}
             <motion.button
@@ -356,7 +387,7 @@ const SwipeInterface = ({
         <motion.a
           href={
             currentTrack.url ||
-            `https://youtube.com/results?search_query=${encodeURIComponent(`${currentTrack.title} ${currentTrack.artist?.name}`)}`
+            `https://youtube.com/results?search_query=${encodeURIComponent(`${currentTrack.title || currentTrack.name} ${currentTrack.artist?.name}`)}`
           }
           target="_blank"
           rel="noopener noreferrer"
@@ -392,38 +423,41 @@ const SwipeInterface = ({
           className="p-3 bg-pink-50 rounded-2xl border border-pink-100"
         >
           <h4 className="text-sm font-medium text-pink-800 mb-2">
-            Your Bento Preview ({likedTracks.length}/10)
+            Your Bento ({likedTracks.length} tracks)
           </h4>
           <div className="grid grid-cols-4 gap-1.5">
-            {likedTracks.slice(0, 8).map((track, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: i * 0.05 }}
-                className="aspect-square rounded-lg overflow-hidden bg-white border border-pink-200"
-              >
-                {track.album?.cover_big || track.thumbnail ? (
-                  <img
-                    src={track.album?.cover_big || track.thumbnail}
-                    className="w-full h-full object-cover"
-                    alt=""
-                    onError={(e) => {
-                      e.target.style.display = "none";
-                      e.target.parentElement.innerHTML = `
-                        <div class="w-full h-full flex items-center justify-center bg-pink-100 rounded-lg">
-                          <div class="text-lg">🎵</div>
-                        </div>
-                      `;
-                    }}
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-pink-100 rounded-lg">
-                    <div className="text-lg">🎵</div>
-                  </div>
-                )}
-              </motion.div>
-            ))}
+            {likedTracks.slice(0, 8).map((track, i) => {
+              const trackImg = getTrackImage(track);
+              return (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: i * 0.05 }}
+                  className="aspect-square rounded-lg overflow-hidden bg-white border border-pink-200"
+                >
+                  {trackImg ? (
+                    <img
+                      src={trackImg}
+                      className="w-full h-full object-cover"
+                      alt=""
+                      onError={(e) => {
+                        e.target.style.display = "none";
+                        e.target.parentElement.innerHTML = `
+                          <div class="w-full h-full flex items-center justify-center bg-pink-100 rounded-lg">
+                            <div class="text-lg">🎵</div>
+                          </div>
+                        `;
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-pink-100 rounded-lg">
+                      <div className="text-lg">🎵</div>
+                    </div>
+                  )}
+                </motion.div>
+              );
+            })}
           </div>
         </motion.div>
       )}

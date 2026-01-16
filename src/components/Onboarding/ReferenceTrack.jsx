@@ -135,27 +135,27 @@ const ReferenceTrack = ({ onComplete, initialData, onSkip }) => {
 
   return (
     <div className="w-full max-w-2xl mx-auto pb-20">
-      {/* M3: Header */}
+      {/* Header */}
       <div className="text-center mb-8">
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           transition={springExpressive}
-          className="inline-flex items-center justify-center w-16 h-16 rounded-[28px] bg-tertiary-container mb-4"
+          className="inline-flex items-center justify-center w-16 h-16 rounded-[28px] bg-pink-100 mb-4"
         >
           <motion.div
             animate={{ rotate: [0, 10, -10, 0] }}
             transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
           >
-            <Music className="w-8 h-8 text-on-tertiary-container" />
+            <Music className="w-8 h-8 text-pink-600" />
           </motion.div>
         </motion.div>
 
         <div className="space-y-2">
-          <h2 className="headline-small text-on-surface">
+          <h2 className="text-2xl font-semibold text-gray-800">
             Find Your Sound Reference
           </h2>
-          <p className="body-large text-on-surface-variant">
+          <p className="text-gray-600">
             Add a track you love for personalized recommendations
           </p>
         </div>
@@ -164,26 +164,26 @@ const ReferenceTrack = ({ onComplete, initialData, onSkip }) => {
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ delay: 0.2, ...springExpressive }}
-          className="inline-flex items-center gap-2 px-3 py-1.5 bg-surface-container-high rounded-full mt-3"
+          className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-full mt-3"
         >
-          <AlertCircle className="w-3 h-3 text-tertiary" />
-          <span className="label-small text-on-surface-variant">
+          <AlertCircle className="w-3 h-3 text-pink-500" />
+          <span className="text-xs text-gray-600">
             Optional - skip for fresh discoveries
           </span>
         </motion.div>
       </div>
 
-      {/* M3: Search */}
+      {/* Search */}
       <div className="space-y-4 mb-6">
         <div className="relative">
           <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
             <input
               type="text"
               value={searchQuery}
               onChange={handleSearchChange}
               placeholder="Search for a song, artist, or album..."
-              className="w-full bg-surface-container-high text-on-surface pl-12 pr-10 py-3 rounded-2xl body-medium placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary border border-outline-variant"
+              className="w-full bg-white text-gray-800 pl-12 pr-10 py-3 rounded-2xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
               disabled={!!selectedTrack}
             />
 
@@ -193,7 +193,7 @@ const ReferenceTrack = ({ onComplete, initialData, onSkip }) => {
                 transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                 className="absolute right-4 top-1/2 -translate-y-1/2"
               >
-                <div className="w-4 h-4 border-2 border-outline-variant border-t-primary rounded-full" />
+                <div className="w-4 h-4 border-2 border-gray-300 border-t-pink-500 rounded-full" />
               </motion.div>
             )}
           </div>
@@ -205,7 +205,7 @@ const ReferenceTrack = ({ onComplete, initialData, onSkip }) => {
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="absolute w-full mt-2 bg-surface-container-high border border-outline-variant rounded-2xl shadow-m3-2 z-10 max-h-64 overflow-y-auto"
+                className="absolute w-full mt-2 bg-white border border-gray-300 rounded-2xl shadow-lg z-10 max-h-64 overflow-y-auto"
               >
                 {searchResults.map((track, index) => (
                   <motion.button
@@ -214,7 +214,7 @@ const ReferenceTrack = ({ onComplete, initialData, onSkip }) => {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.05 }}
                     onClick={() => handleSelectTrack(track)}
-                    className="w-full p-3 hover:bg-surface-container text-left border-b border-outline-variant last:border-b-0 flex items-center gap-3"
+                    className="w-full p-3 hover:bg-gray-50 text-left border-b border-gray-200 last:border-b-0 flex items-center gap-3"
                     whileHover={{ x: 2 }}
                   >
                     <div className="relative overflow-hidden rounded-lg">
@@ -225,14 +225,14 @@ const ReferenceTrack = ({ onComplete, initialData, onSkip }) => {
                       />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="label-medium font-medium text-on-surface truncate">
+                      <div className="text-sm font-medium text-gray-800 truncate">
                         {track.title}
                       </div>
-                      <div className="body-small text-on-surface-variant truncate">
+                      <div className="text-xs text-gray-600 truncate">
                         {track.artist.name}
                       </div>
                     </div>
-                    <div className="label-small text-on-surface-variant bg-surface-variant px-2 py-1 rounded-full">
+                    <div className="text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded-full">
                       {Math.floor(track.duration / 60)}:
                       {(track.duration % 60).toString().padStart(2, "0")}
                     </div>
@@ -248,9 +248,9 @@ const ReferenceTrack = ({ onComplete, initialData, onSkip }) => {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="p-3 bg-error-container rounded-xl body-small text-on-error-container"
+            className="p-3 bg-red-100 border border-red-200 rounded-xl"
           >
-            ⚠️ {searchError}
+            <p className="text-sm text-red-800">⚠️ {searchError}</p>
           </motion.div>
         )}
       </div>
@@ -262,29 +262,40 @@ const ReferenceTrack = ({ onComplete, initialData, onSkip }) => {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="mb-6 bg-primary-container/20 border border-primary/20 rounded-2xl p-4"
+            className="mb-6 bg-pink-50 border border-pink-200 rounded-2xl p-4"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <motion.div whileHover={{ rotate: 5 }} className="relative">
                   <img
-                    src={selectedTrack.album?.cover_small}
+                    src={
+                      selectedTrack.album?.cover_small ||
+                      selectedTrack.thumbnail
+                    }
                     alt=""
-                    className="w-16 h-16 rounded-xl"
+                    className="w-16 h-16 rounded-xl object-cover"
+                    onError={(e) => {
+                      e.target.style.display = "none";
+                      e.target.parentElement.innerHTML = `
+                        <div class="w-16 h-16 rounded-xl bg-pink-100 flex items-center justify-center">
+                          <div class="text-2xl">🎵</div>
+                        </div>
+                      `;
+                    }}
                   />
                 </motion.div>
                 <div>
-                  <h4 className="title-medium font-medium text-on-surface">
+                  <h4 className="text-lg font-medium text-gray-800">
                     {selectedTrack.title || selectedTrack.name}
                   </h4>
-                  <p className="body-small text-on-surface-variant">
+                  <p className="text-sm text-gray-600">
                     {selectedTrack.artist?.name}
                   </p>
                 </div>
               </div>
               <motion.button
                 onClick={handleRemoveTrack}
-                className="text-on-surface-variant hover:text-on-surface p-2 hover:bg-surface-container rounded-full"
+                className="text-gray-500 hover:text-gray-700 p-2 hover:bg-gray-100 rounded-full"
                 whileHover={{ rotate: 90, scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
               >
@@ -294,12 +305,12 @@ const ReferenceTrack = ({ onComplete, initialData, onSkip }) => {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="mt-3 pt-3 border-t border-primary/10 flex items-center gap-2"
+              className="mt-3 pt-3 border-t border-pink-200 flex items-center gap-2"
             >
-              <div className="p-1.5 bg-primary/10 rounded-full">
-                <Sparkles className="w-4 h-4 text-primary" />
+              <div className="p-1.5 bg-pink-100 rounded-full">
+                <Sparkles className="w-4 h-4 text-pink-600" />
               </div>
-              <div className="body-small text-on-surface-variant">
+              <div className="text-sm text-gray-600">
                 Perfect! We'll find similar vibes for you
               </div>
             </motion.div>
@@ -313,9 +324,9 @@ const ReferenceTrack = ({ onComplete, initialData, onSkip }) => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
-          className="pt-6 border-t border-outline-variant mb-8"
+          className="pt-6 border-t border-gray-300 mb-8"
         >
-          <h4 className="label-large font-medium text-on-surface mb-3">
+          <h4 className="text-sm font-medium text-gray-800 mb-3">
             Popular picks to get started
           </h4>
           <motion.div
@@ -325,9 +336,9 @@ const ReferenceTrack = ({ onComplete, initialData, onSkip }) => {
             className="grid grid-cols-1 sm:grid-cols-3 gap-3"
           >
             {[
-              { title: "Blinding Lights", artist: "The Weeknd", emoji: "💡" },
-              { title: "Stay", artist: "Kid LAROI, Bieber", emoji: "⏳" },
-              { title: "good 4 u", artist: "Olivia Rodrigo", emoji: "⚡" },
+              { title: "Blinding Lights", artist: "The Weeknd" },
+              { title: "Stay", artist: "Kid LAROI, Bieber" },
+              { title: "good 4 u", artist: "Olivia Rodrigo" },
             ].map((track, index) => (
               <motion.button
                 key={index}
@@ -341,19 +352,16 @@ const ReferenceTrack = ({ onComplete, initialData, onSkip }) => {
                     duration: 180,
                   })
                 }
-                className="p-3 bg-surface-container-high hover:bg-surface-container border border-outline-variant rounded-xl text-left"
+                className="p-3 bg-white hover:bg-gray-50 border border-gray-300 rounded-xl text-left shadow-sm hover:shadow transition-all"
                 whileHover={{ y: -2 }}
                 whileTap={{ scale: 0.98 }}
               >
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-lg">{track.emoji}</span>
-                  <span className="label-medium font-medium text-on-surface">
+                  <span className="text-sm font-medium text-gray-800">
                     {track.title}
                   </span>
                 </div>
-                <div className="body-small text-on-surface-variant">
-                  {track.artist}
-                </div>
+                <div className="text-xs text-gray-600">{track.artist}</div>
               </motion.button>
             ))}
           </motion.div>
@@ -364,20 +372,20 @@ const ReferenceTrack = ({ onComplete, initialData, onSkip }) => {
       <div className="flex flex-col sm:flex-row gap-3">
         <motion.button
           onClick={handleSkip}
-          className="m3-button-outlined flex-1 py-3 flex items-center justify-center gap-2"
+          className="border-2 border-gray-300 text-pink-500 px-6 py-3 rounded-full hover:border-pink-500 hover:bg-pink-50 transition-all font-medium bg-white flex-1 flex items-center justify-center gap-2"
           {...buttonSpring}
         >
-          <SkipForward className="w-5 h-5 text-tertiary" />
-          <span className="label-large font-medium">Skip & Discover Fresh</span>
+          <SkipForward className="w-5 h-5 text-pink-500" />
+          <span className="font-medium">Skip & Discover Fresh</span>
         </motion.button>
 
         <motion.button
           onClick={handleContinue}
           disabled={!selectedTrack}
-          className={`flex-1 py-3 rounded-2xl label-large font-medium flex items-center justify-center gap-2 ${
+          className={`flex-1 py-3 rounded-2xl font-medium flex items-center justify-center gap-2 ${
             selectedTrack
-              ? "m3-button-filled"
-              : "bg-surface-container text-on-surface-variant cursor-not-allowed"
+              ? "bg-pink-500 text-white px-6 rounded-full shadow-lg hover:shadow-xl transition-all hover:bg-pink-600"
+              : "bg-gray-200 text-gray-500 px-6 py-3 rounded-xl cursor-not-allowed"
           }`}
           whileHover={selectedTrack ? { scale: 1.02 } : {}}
           whileTap={selectedTrack ? { scale: 0.98 } : {}}

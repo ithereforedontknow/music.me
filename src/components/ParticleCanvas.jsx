@@ -38,7 +38,6 @@ const ParticleCanvas = ({ isActive }) => {
             width: `${blob.size}px`,
             height: `${blob.size}px`,
             backgroundColor: blob.color,
-            filter: "blur(20px)",
           }}
           initial={{
             scale: 0,

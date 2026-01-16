@@ -125,7 +125,7 @@ const MoodSelection = ({ onComplete, initialData }) => {
             >
               {/* Icon */}
               <motion.div
-                className={`mb-3 p-3 rounded-xl ${
+                className={`my-5 p-3 rounded-xl ${
                   isSelected
                     ? "bg-pink-500 text-white"
                     : "bg-gray-100 text-gray-600"
