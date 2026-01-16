@@ -183,10 +183,7 @@ const MoodSelection = ({ onComplete, initialData }) => {
               className="bg-pink-500 text-white px-8 py-4 rounded-full shadow-lg hover:shadow-xl transition-all hover:bg-pink-600 font-medium flex items-center gap-3"
               {...buttonSpring}
             >
-              <span className="font-medium">
-                Continue with {selectedMoods.length} mood
-                {selectedMoods.length !== 1 ? "s" : ""}
-              </span>
+              <span className="font-medium">Continue</span>
               <motion.div
                 animate={{ x: [0, 4, 0] }}
                 transition={{ duration: 1.5, repeat: Infinity }}

@@ -173,10 +173,10 @@ const App = () => {
         transition={springExpressive}
         className="fixed top-0 left-0 right-0 z-50 px-6 py-4"
       >
-        <div className="mx-auto max-w-6xl flex items-center justify-between">
-          {/* Brand Logo */}
+        <div className="mx-auto max-w-6xl flex items-center justify-center md:justify-between">
+          {/* Brand Logo: Hidden on mobile, flex on medium+ screens */}
           <motion.div
-            className="flex items-center gap-3 px-5 py-3 rounded-[28px] bg-white shadow-lg border border-gray-200"
+            className="hidden md:flex items-center gap-3 px-5 py-3 rounded-[28px] bg-white shadow-lg border border-gray-200"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
