@@ -29,23 +29,23 @@ const App = () => {
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingMessage, setLoadingMessage] = useState("");
   const [showResults, setShowResults] = useState(false);
-  const [apiStatus, setApiStatus] = useState({
-    hasLastFm: false,
-    hasGemini: false,
-    isDemoMode: true,
-  });
+  // const [apiStatus, setApiStatus] = useState({
+  //   hasLastFm: false,
+  //   hasGemini: false,
+  //   isDemoMode: true,
+  // });
 
-  useEffect(() => {
-    const lastfmKey = import.meta.env.VITE_LASTFM_API_KEY;
-    const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
-    const hasLastFm = !!lastfmKey && lastfmKey !== "your_lastfm_api_key_here";
-    const hasGemini = !!geminiKey && geminiKey !== "your_gemini_api_key_here";
-    setApiStatus({
-      hasLastFm,
-      hasGemini,
-      isDemoMode: !hasLastFm || !hasGemini,
-    });
-  }, []);
+  // useEffect(() => {
+  //   const lastfmKey = import.meta.env.VITE_LASTFM_API_KEY;
+  //   const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  //   const hasLastFm = !!lastfmKey && lastfmKey !== "your_lastfm_api_key_here";
+  //   const hasGemini = !!geminiKey && geminiKey !== "your_gemini_api_key_here";
+  //   setApiStatus({
+  //     hasLastFm,
+  //     hasGemini,
+  //     is: !hasLastFm || !hasGemini,
+  //   });
+  // }, []);
 
   const handleLogoComplete = () => {
     setTimeout(() => setFlowState("onboarding"), 800);
@@ -191,18 +191,6 @@ const App = () => {
 
           {/* Action Buttons */}
           <div className="flex items-center gap-3">
-            {apiStatus.isDemoMode && (
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                className="hidden sm:flex items-center gap-2 px-4 py-2.5 rounded-full bg-amber-100"
-                whileHover={{ scale: 1.05 }}
-              >
-                <Info className="w-4 h-4 text-amber-800" />
-                <span className="text-sm font-medium text-amber-800">Demo</span>
-              </motion.div>
-            )}
-
             {(flowState === "swiping" || showResults) && (
               <motion.button
                 onClick={handleBackToStart}
@@ -293,38 +281,6 @@ const App = () => {
           </AnimatePresence>
         </div>
       </main>
-
-      {/* Demo Mode Banner */}
-      <AnimatePresence>
-        {apiStatus.isDemoMode && flowState === "onboarding" && (
-          <motion.div
-            initial={{ opacity: 0, y: 100 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 100 }}
-            transition={springExpressive}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 max-w-md w-[90%]"
-          >
-            <div className="bg-white rounded-[24px] p-4 shadow-2xl border border-gray-300 flex items-center gap-3">
-              <div className="p-2 rounded-full bg-red-100">
-                <AlertCircle className="w-5 h-5 text-red-600" />
-              </div>
-              <div className="flex-1">
-                <p className="font-semibold text-gray-800">Demo Mode</p>
-                <p className="text-sm text-gray-600">
-                  Add API keys for full experience
-                </p>
-              </div>
-              <motion.button
-                className="p-2 hover:bg-gray-100 rounded-full"
-                whileHover={{ rotate: 90 }}
-                whileTap={{ scale: 0.9 }}
-              >
-                <Settings className="w-5 h-5 text-gray-600" />
-              </motion.button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 };
