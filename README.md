@@ -1,16 +1,68 @@
-# React + Vite
+# 🎵 music.me - AI-Powered Music Discovery
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+<div align="center">
 
-Currently, two official plugins are available:
+![music.me Screenshot](https://img.shields.io/badge/React-18.2-blue?logo=react)
+![Vite](https://img.shields.io/badge/Vite-5.0-purple?logo=vite)
+![Framer Motion](https://img.shields.io/badge/Framer_Motion-10.0-black?logo=framer)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?logo=typescript)
+![License](https://img.shields.io/badge/License-MIT-green)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+**Discover your next favorite music with AI-powered recommendations!** ✨
 
-## React Compiler
+[Live Demo](#) • [Features](#-features) • [Installation](#-installation) • [API Setup](#-api-setup)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+</div>
 
-## Expanding the ESLint configuration
+## 🎯 Features
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### 🎨 **Beautiful Light Mode UI**
+- Clean, modern design with gradient accents
+- Emoji-enhanced interface for fun interactions
+- Bouncy animations using Framer Motion
+- Responsive design for all devices
+
+### 🤖 **Smart Music Discovery**
+- **YouTube Music API** for real track data
+- **Google Gemini AI** for personalized recommendations
+- Mood-based genre mapping
+- Reference track similarity matching
+
+### 👆 **Interactive Experience**
+- Tinder-like swipe interface
+- Audio previews for instant listening
+- "Surprise Me" feature for random discovery
+- Bento box visualization for saved tracks
+
+### 📱 **Modern Tech Stack**
+- React 18 with Hooks
+- Vite for lightning-fast builds
+- Tailwind CSS for styling
+- Framer Motion for animations
+- YouTube Data API v3
+- Google Generative AI
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js 18+ 
+- npm or yarn
+- Google Cloud Account (for APIs)
+- YouTube Data API v3 key
+- Google AI API key
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/music-me.git
+cd music-me
+
+# Install dependencies
+npm install
+
+# Set up environment variables
+cp .env.example .env.local
+
+# Start development server
+npm run dev

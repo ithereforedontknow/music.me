@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import {
   Zap,
@@ -9,22 +9,40 @@ import {
   PartyPopper,
   Heart,
   Clock,
+  CloudSun,
+  Coffee,
+  Brain,
+  Sparkles,
+  Music,
+  Star,
+  Moon,
+  Check,
+  ChevronRight,
 } from "lucide-react";
+import {
+  springExpressive,
+  staggerContainer,
+  staggerItems,
+  buttonSpring,
+  fadeInUp,
+} from "../../utils/motion";
 
 export const MOODS = [
-  { id: "energetic", icon: Zap, label: "Energetic", color: "text-yellow-500" },
-  { id: "chill", icon: Waves, label: "Chill", color: "text-blue-500" },
-  { id: "happy", icon: Sun, label: "Happy", color: "text-orange-500" },
-  { id: "focused", icon: Target, label: "Focused", color: "text-purple-500" },
-  {
-    id: "melancholy",
-    icon: CloudRain,
-    label: "Melancholy",
-    color: "text-gray-400",
-  },
-  { id: "party", icon: PartyPopper, label: "Party", color: "text-pink-500" },
-  { id: "romantic", icon: Heart, label: "Romantic", color: "text-red-500" },
-  { id: "nostalgic", icon: Clock, label: "Nostalgic", color: "text-amber-600" },
+  { id: "energetic", icon: Zap, label: "Energetic" },
+  { id: "chill", icon: Waves, label: "Chill" },
+  { id: "happy", icon: Sun, label: "Happy" },
+  { id: "focused", icon: Target, label: "Focused" },
+  { id: "melancholy", icon: CloudRain, label: "Melancholy" },
+  { id: "party", icon: PartyPopper, label: "Party" },
+  { id: "romantic", icon: Heart, label: "Romantic" },
+  { id: "nostalgic", icon: Clock, label: "Nostalgic" },
+  { id: "dreamy", icon: CloudSun, label: "Dreamy" },
+  { id: "cozy", icon: Coffee, label: "Cozy" },
+  { id: "creative", icon: Sparkles, label: "Creative" },
+  { id: "thoughtful", icon: Brain, label: "Thoughtful" },
+  { id: "uplifting", icon: Music, label: "Uplifting" },
+  { id: "inspiring", icon: Star, label: "Inspiring" },
+  { id: "calm", icon: Moon, label: "Calm" },
 ];
 
 const MoodSelection = ({ onComplete, initialData }) => {
@@ -32,71 +50,154 @@ const MoodSelection = ({ onComplete, initialData }) => {
 
   const toggleMood = (moodId) => {
     setSelectedMoods((prev) => {
-      if (prev.includes(moodId)) {
-        return prev.filter((id) => id !== moodId);
-      } else if (prev.length < 3) {
-        return [...prev, moodId];
-      }
+      if (prev.includes(moodId)) return prev.filter((id) => id !== moodId);
+      if (prev.length < 5) return [...prev, moodId];
       return prev;
     });
   };
 
-  const handleContinue = () => {
-    onComplete({ moods: selectedMoods });
-  };
-
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+    <motion.div {...fadeInUp} className="w-full max-w-6xl mx-auto pb-20">
+      {/* Header Section */}
+      <div className="text-center mb-12">
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={springExpressive}
+          className="inline-flex items-center justify-center w-20 h-20 rounded-[28px] bg-pink-100 mb-6"
+        >
+          <motion.div
+            animate={{ rotate: [0, 10, -10, 0] }}
+            transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
+          >
+            <Heart className="w-10 h-10 text-pink-600" />
+          </motion.div>
+        </motion.div>
+
+        <div className="space-y-3">
+          <h2 className="text-2xl font-semibold text-gray-800">
+            How Are You Feeling?
+          </h2>
+          <p className="text-gray-600">Select up to 5 moods</p>
+        </div>
+
+        {/* Selection Counter */}
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ delay: 0.2, ...springExpressive }}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-pink-50 rounded-full mt-4"
+        >
+          <span className="text-lg font-semibold text-pink-600">
+            {selectedMoods.length}
+          </span>
+          <span className="text-gray-600">/ 5 selected</span>
+        </motion.div>
+      </div>
+
+      {/* Mood Grid */}
+      <motion.div
+        variants={staggerContainer}
+        initial="initial"
+        animate="animate"
+        className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3"
+      >
         {MOODS.map((mood, index) => {
+          const isSelected = selectedMoods.includes(mood.id);
           const Icon = mood.icon;
+
           return (
             <motion.button
               key={mood.id}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: index * 0.05 }}
+              variants={staggerItems}
               onClick={() => toggleMood(mood.id)}
-              className={`relative p-4 rounded-xl border transition-all duration-200 ${
-                selectedMoods.includes(mood.id)
-                  ? "border-white bg-white/10"
-                  : "border-white/10 bg-white/5 hover:border-white/20"
-              }`}
+              className={`relative flex flex-col items-center p-4 aspect-square rounded-2xl ${
+                isSelected
+                  ? "bg-pink-100 border-2 border-pink-500"
+                  : "bg-white border border-gray-200"
+              } shadow-lg hover:shadow-xl transition-all`}
+              whileHover={{
+                scale: 1.05,
+                y: -2,
+                transition: springExpressive,
+              }}
               whileTap={{ scale: 0.95 }}
             >
-              <div className="flex flex-col items-center gap-3">
-                <div
-                  className={`p-2 rounded-lg ${selectedMoods.includes(mood.id) ? "bg-white/10" : ""}`}
-                >
-                  <Icon className={`w-6 h-6 ${mood.color}`} />
-                </div>
-                <div className="text-sm font-medium text-white">
-                  {mood.label}
-                </div>
-              </div>
+              {/* Icon */}
+              <motion.div
+                className={`mb-3 p-3 rounded-xl ${
+                  isSelected
+                    ? "bg-pink-500 text-white"
+                    : "bg-gray-100 text-gray-600"
+                }`}
+                animate={
+                  isSelected
+                    ? {
+                        scale: [1, 1.2, 1],
+                        rotate: [0, 10, -10, 0],
+                      }
+                    : {}
+                }
+                transition={{ duration: 0.6 }}
+              >
+                <Icon className="w-6 h-6" />
+              </motion.div>
+
+              {/* Label */}
+              <span
+                className={`text-sm font-medium ${isSelected ? "text-pink-700" : "text-gray-800"}`}
+              >
+                {mood.label}
+              </span>
+
+              {/* Selection Indicator */}
+              <AnimatePresence>
+                {isSelected && (
+                  <motion.div
+                    initial={{ scale: 0, rotate: -180 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    exit={{ scale: 0, rotate: 180 }}
+                    transition={springExpressive}
+                    className="absolute top-2 right-2 w-6 h-6 bg-pink-500 text-white rounded-full flex items-center justify-center"
+                  >
+                    <Check className="w-4 h-4" />
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.button>
           );
         })}
-      </div>
+      </motion.div>
 
-      <div className="text-center">
-        <p className="text-sm text-gray-400">
-          {selectedMoods.length} of 3 selected
-        </p>
-      </div>
-
-      <button
-        onClick={handleContinue}
-        disabled={selectedMoods.length === 0}
-        className={`w-full py-3 rounded-xl font-medium transition-all ${
-          selectedMoods.length > 0
-            ? "bg-white text-black hover:bg-gray-100"
-            : "bg-white/10 text-white/40 cursor-not-allowed"
-        }`}
-      >
-        {selectedMoods.length > 0 ? "Continue" : "Select at least one mood"}
-      </button>
-    </div>
+      {/* Continue Button */}
+      <AnimatePresence>
+        {selectedMoods.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30"
+          >
+            <motion.button
+              onClick={() => onComplete({ moods: selectedMoods })}
+              className="bg-pink-500 text-white px-8 py-4 rounded-full shadow-lg hover:shadow-xl transition-all hover:bg-pink-600 font-medium flex items-center gap-3"
+              {...buttonSpring}
+            >
+              <span className="font-medium">
+                Continue with {selectedMoods.length} mood
+                {selectedMoods.length !== 1 ? "s" : ""}
+              </span>
+              <motion.div
+                animate={{ x: [0, 4, 0] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+              >
+                <ChevronRight className="w-5 h-5" />
+              </motion.div>
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 };
 

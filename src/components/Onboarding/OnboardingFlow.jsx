@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronRight, Sparkles } from "lucide-react";
+import { Sparkles, ChevronRight } from "lucide-react";
 import MoodSelection from "./MoodSelection";
 import GenreSelection from "./GenreSelection";
 import ReferenceTrack from "./ReferenceTrack";
-
-// Import MOODS and GENRES from their respective files
-import { MOODS } from "./MoodSelection";
-import { GENRES } from "./GenreSelection";
+import {
+  springExpressive,
+  pageTransition,
+  buttonSpring,
+} from "../../utils/motion";
 
 const OnboardingFlow = ({ onComplete }) => {
   const [step, setStep] = useState(0);
@@ -19,19 +20,25 @@ const OnboardingFlow = ({ onComplete }) => {
 
   const steps = [
     {
-      title: "How are you feeling?",
-      subtitle: "Select 1-3 moods",
       component: MoodSelection,
+      key: "mood",
+      title: "Mood",
+      color: "secondary",
+      icon: "💫",
     },
     {
-      title: "What's your vibe?",
-      subtitle: "Pick your favorite genres",
       component: GenreSelection,
+      key: "genre",
+      title: "Genre",
+      color: "primary",
+      icon: "🎵",
     },
     {
-      title: "Got a favorite track?",
-      subtitle: "Optional - for personalized recommendations",
       component: ReferenceTrack,
+      key: "reference",
+      title: "Reference",
+      color: "tertiary",
+      icon: "🎯",
     },
   ];
 
@@ -47,101 +54,114 @@ const OnboardingFlow = ({ onComplete }) => {
   };
 
   const handleSkip = () => {
-    // Generate random moods and genres for "Surprise Me"
-    const randomMoods = [...MOODS]
-      .sort(() => 0.5 - Math.random())
-      .slice(0, 2)
-      .map((mood) => mood.id);
-
-    const randomGenres = [...GENRES]
-      .sort(() => 0.5 - Math.random())
-      .slice(0, 2)
-      .map((genre) => genre.id);
-
     onComplete({
-      moods: randomMoods,
-      genres: randomGenres,
+      moods: ["chill", "energetic", "happy"],
+      genres: ["pop", "indie", "electronic"],
       referenceTrack: null,
       usedSurprise: true,
-    });
-  };
-
-  const handleSkipReference = () => {
-    // This handles skipping just the reference track step
-    onComplete({
-      ...selections,
-      referenceTrack: null,
     });
   };
 
   const CurrentStep = steps[step].component;
 
   return (
-    <div className="min-h-[60vh] flex flex-col">
-      {/* Progress indicator */}
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex gap-2">
-          {steps.map((_, index) => (
-            <motion.div
-              key={index}
-              className={`h-1 rounded-full ${index <= step ? "bg-violet-600 " : "bg-white/10"}`}
-              initial={{ width: "0px" }}
-              animate={{ width: index <= step ? "32px" : "12px" }}
-              transition={{ delay: index * 0.1 }}
-            />
-          ))}
+    <div className="w-full flex flex-col min-h-[70vh]">
+      {/* M3: Progress Steps */}
+      {/* <div className="w-full max-w-3xl mx-auto mb-8">
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            {steps.map((stepConfig, index) => {
+              const isActive = index === step;
+              const isCompleted = index < step;
+
+              return (
+                <div
+                  key={index}
+                  className="flex flex-col items-center gap-2 flex-1"
+                >
+                  <div className="flex items-center w-full">
+                    {index > 0 && (
+                      <div
+                        className={`flex-1 h-1 ${isCompleted ? "bg-primary" : "bg-outline-variant"} transition-colors`}
+                      />
+                    )}
+
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ delay: index * 0.1, ...springExpressive }}
+                      className={`
+                        relative w-10 h-10 rounded-full flex items-center justify-center
+                        border-2 transition-colors
+                        ${
+                          isActive
+                            ? `border-${stepConfig.color} bg-${stepConfig.color}/10`
+                            : isCompleted
+                              ? "border-primary bg-primary/10"
+                              : "border-outline-variant bg-surface"
+                        }
+                      `}
+                    >
+                      {isCompleted ? (
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          className="w-6 h-6 bg-primary text-on-primary rounded-full flex items-center justify-center"
+                        >
+                          <ChevronRight className="w-4 h-4 rotate-90" />
+                        </motion.div>
+                      ) : (
+                        <span
+                          className={`label-medium ${isActive ? `text-${stepConfig.color}` : "text-on-surface-variant"}`}
+                        >
+                          {stepConfig.icon}
+                        </span>
+                      )}
+                    </motion.div>
+
+                    {index < steps.length - 1 && (
+                      <div
+                        className={`flex-1 h-1 ${index < step ? "bg-primary" : "bg-outline-variant"} transition-colors`}
+                      />
+                    )}
+                  </div>
+
+                  <div className="text-center">
+                    <span
+                      className={`label-small ${isActive ? "text-on-surface font-medium" : "text-on-surface-variant"}`}
+                    >
+                      {stepConfig.title}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="flex justify-end">
+            <motion.button
+              onClick={handleSkip}
+              className="m3-button-tonal flex items-center gap-2 px-4 py-2"
+              {...buttonSpring}
+            >
+              <Sparkles className="w-4 h-4" />
+              <span className="label-medium">Surprise Me</span>
+            </motion.button>
+          </div>
         </div>
+      </div>*/}
 
-        <button
-          onClick={handleSkip}
-          className="text-sm text-white/60 hover:text-white transition-colors flex items-center gap-1"
-        >
-          Surprise Me <Sparkles className="w-4 h-4" />
-        </button>
-      </div>
-
-      {/* Step content */}
-      <div className="flex-1">
+      {/* Main Content */}
+      <div className="flex-1 w-full">
         <AnimatePresence mode="wait">
-          <motion.div
-            key={step}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="h-full"
-          >
-            <div className="mb-8">
-              <h2 className="text-3xl font-black text-white mb-2">
-                {steps[step].title}
-              </h2>
-              <p className="text-gray-400">{steps[step].subtitle}</p>
-            </div>
-
+          <motion.div key={step} {...pageTransition} className="w-full">
             <CurrentStep
               onComplete={handleStepComplete}
               initialData={selections}
-              onSkip={handleSkipReference}
+              onSkip={() => handleStepComplete({ referenceTrack: null })}
             />
           </motion.div>
         </AnimatePresence>
-      </div>
-
-      {/* Step counter */}
-      <div className="mt-8 pt-6 border-t border-white/10">
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-400">
-            Step {step + 1} of {steps.length}
-          </span>
-
-          {step < steps.length - 1 && (
-            <button
-              onClick={() => handleStepComplete({})}
-              className="text-white hover:text-white/80 text-sm font-medium flex items-center gap-1"
-            >
-              Continue <ChevronRight className="w-4 h-4" />
-            </button>
-          )}
-        </div>
       </div>
     </div>
   );
