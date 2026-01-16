@@ -40,7 +40,6 @@ const App = () => {
     const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
     const hasLastFm = !!lastfmKey && lastfmKey !== "your_lastfm_api_key_here";
     const hasGemini = !!geminiKey && geminiKey !== "your_gemini_api_key_here";
-
     setApiStatus({
       hasLastFm,
       hasGemini,
