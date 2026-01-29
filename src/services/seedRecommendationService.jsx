@@ -517,54 +517,120 @@ export const getGenreBasedRecommendations = async (genres) => {
   }
   return recommendationService.getGenreBasedRecommendations(genres, 15);
 };
+const ITUNES_BASE = "https://itunes.apple.com/search";
+const fetchAppleArt = async (trackName, artistName) => {
+  try {
+    // We search for the track + artist to get the most accurate match
+    const query = encodeURIComponent(`${trackName} ${artistName}`);
+    const res = await fetch(`${ITUNES_BASE}?term=${query}&entity=song&limit=1`);
+    const data = await res.json();
+
+    if (data.results?.length > 0) {
+      // Apple returns 100x100 by default; we swap the string for 600x600 high-res
+      return data.results[0].artworkUrl100.replace("100x100bb", "600x600bb");
+    }
+    return null;
+  } catch (err) {
+    console.error("Apple Art Fetch Error:", err);
+    return null;
+  }
+};
 export const searchSeeds = async (type, query) => {
-  // Ensure service is initialized
   if (!recommendationService) {
     recommendationService = new RecommendationService();
   }
 
   try {
-    let results = [];
+    const lfm = recommendationService.lastFM;
+    let rawResults = [];
 
-    // Inside your searchSeeds function in seedRecommendationService.jsx
+    // 1. Get the Raw Data from Last.fm
     if (type === "artist") {
-      const artists = await recommendationService.lastFM.searchArtists(query);
-      results = artists.map((artist) => ({
-        id: artist.mbid || `artist_${artist.name}`,
-        name: artist.name,
-        artist: "Artist", // We hardcode this label for the search UI
-        image: artist.image?.find((i) => i.size === "large")?.["#text"] || null,
-        type: "artist",
-      }));
+      rawResults = await lfm.searchArtists(query);
     } else if (type === "track") {
-      const tracks = await recommendationService.lastFM.searchTracks(query);
-      results = tracks.map((track) => ({
-        ...track,
-        // Fix the object issue here:
-        artist:
-          typeof track.artist === "object" ? track.artist.name : track.artist,
-        image: track.images?.large || null,
-        type: "track",
-      }));
+      rawResults = await lfm.searchTracks(query);
     } else if (type === "tag") {
-      // Last.fm tag search is strict, so we simply return the query as a valid tag
-      // allowing the user to select exactly what they typed
-      results = [
+      // Tags don't usually have album art, so we return them immediately
+      return [
         {
           id: `tag_${query.toLowerCase()}`,
-          name: query, // e.g., "Rock"
+          name: query,
           artist: "Genre / Mood",
-          image: null, // Tags usually don't have distinct images
+          image: null,
           type: "tag",
         },
       ];
     }
 
-    return results;
+    // 2. Hydrate those results with Apple Music Art
+    // This happens AFTER the if/else logic
+    const hydrated = await Promise.all(
+      rawResults.map(async (item) => {
+        // Track down the artist name regardless of Last.fm's nested structure
+        const artistName =
+          typeof item.artist === "object"
+            ? item.artist.name
+            : item.artist || "";
+
+        // Fetch high-res art
+        const art = await fetchAppleArt(item.name, artistName);
+
+        return {
+          id: item.mbid || item.id || `seed_${Math.random()}`,
+          name: item.name,
+          artist: artistName || (type === "artist" ? "Artist" : ""),
+          // Priority: Apple Art -> Last.fm Large -> Last.fm Small -> Null
+          image: art || item.images?.large || lfm.getAlbumArt(item) || null,
+          type: type,
+          listeners: item.listeners,
+        };
+      }),
+    );
+
+    return hydrated; // This is the ONLY return for artists/tracks
   } catch (error) {
     console.error("Error searching seeds:", error);
-    return [];
+    return []; // Return empty array on error so UI doesn't crash
   }
+};
+export const hydrateTrackImage = async (track) => {
+  try {
+    const artistName =
+      typeof track.artist === "object" ? track.artist.name : track.artist;
+    const query = encodeURIComponent(`${track.name} ${artistName}`);
+
+    const res = await fetch(
+      `https://itunes.apple.com/search?term=${query}&entity=song&limit=1`,
+    );
+    const data = await res.json();
+
+    if (data.results?.length > 0) {
+      // Swapping for high-res 800x800 or 1000x1000
+      return data.results[0].artworkUrl100.replace("100x100bb", "800x800bb");
+    }
+    return track.image; // Fallback to original
+  } catch {
+    return track.image;
+  }
+};
+export const fetchHighResArtwork = async (track) => {
+  try {
+    const query = encodeURIComponent(`${track.name} ${track.artist}`);
+    const response = await fetch(
+      `https://itunes.apple.com/search?term=${query}&entity=song&limit=1`,
+    );
+    const data = await response.json();
+
+    if (data.results && data.results.length > 0) {
+      const result = data.results[0];
+      // Convert standard 100x100 URL to 1000x1000
+      return result.artworkUrl100.replace("100x100bb", "1000x1000bb");
+    }
+  } catch (error) {
+    console.error("Artwork fetch failed:", error);
+  }
+  // Fallback to the existing image if fetch fails
+  return track.image;
 };
 export const getMockRecommendations = (prompt) => {
   return [

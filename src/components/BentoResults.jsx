@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import html2canvas from "html2canvas";
 import { springExpressive, buttonSpring, fadeInUp } from "../utils/motion";
-
+import { fetchHighResArtwork } from "../services/seedRecommendationService";
 const BentoResults = ({ likedTracks, onStartNew, onClearTracks }) => {
   const [selectedTrack, setSelectedTrack] = useState(null);
   const [playingAudio, setPlayingAudio] = useState(null);
@@ -28,14 +28,52 @@ const BentoResults = ({ likedTracks, onStartNew, onClearTracks }) => {
   const [copied, setCopied] = useState(false);
   const [showShareOptions, setShowShareOptions] = useState(false);
   const bentoGridRef = useRef(null);
+  const [displayTracks, setDisplayTracks] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
+  useEffect(() => {
+    const finalizeBento = async () => {
+      setIsLoading(true);
+
+      // Hydrate all liked tracks for the final display
+      const hydrated = await Promise.all(
+        likedTracks.map(async (track) => ({
+          ...track,
+          image: await fetchHighResArtwork(track),
+        })),
+      );
+
+      setDisplayTracks(hydrated);
+      setIsLoading(false);
+    };
+
+    finalizeBento();
+  }, [likedTracks]);
   const getTrackImage = (track) => {
     if (!track) return null;
 
-    if (track.images?.large) return track.images.large;
-    if (track.images?.medium) return track.images.medium;
-    if (track.images?.small) return track.images.small;
+    // 1. Try to find the largest Last.fm image (usually at the end of the array)
+    const images = track.images || track.album?.image || track.image;
 
+    if (Array.isArray(images) && images.length > 0) {
+      // If it's Last.fm, the last index is usually 'extralarge' or 'mega'
+      const lastImage = images[images.length - 1];
+
+      // Check for Spotify (.url) or Last.fm (["#text"])
+      const imgUrl =
+        lastImage.url ||
+        lastImage["#text"] ||
+        (typeof lastImage === "string" ? lastImage : null);
+
+      if (imgUrl && imgUrl !== "") return imgUrl;
+    }
+
+    // 2. Direct property checks (Spotify style)
+    if (track.album?.images?.[0]?.url) return track.album.images[0].url;
+    if (typeof track.image === "string" && track.image !== "")
+      return track.image;
+
+    // 3. Fallback to Avatar
     const initials =
       (track.name?.charAt(0) || "M") + (track.artist?.name?.charAt(0) || "A");
     const colors = ["6366f1", "ec4899", "8b5cf6", "14b8a6", "f59e0b"];
@@ -56,12 +94,15 @@ const BentoResults = ({ likedTracks, onStartNew, onClearTracks }) => {
   const handlePlayPreview = (track) => {
     setAudioError(null);
 
-    if (track.preview && track.preview.includes("youtube.com")) {
-      window.open(track.preview, "_blank");
+    // Check both common preview property names
+    const previewUrl = track.preview || track.preview_url;
+
+    if (previewUrl && previewUrl.includes("youtube.com")) {
+      window.open(previewUrl, "_blank");
       return;
     }
 
-    if (!track.preview) {
+    if (!previewUrl) {
       setAudioError(
         `No audio preview available for "${track.title || track.name}"`,
       );
@@ -69,37 +110,41 @@ const BentoResults = ({ likedTracks, onStartNew, onClearTracks }) => {
       return;
     }
 
+    // Logic for switching/stopping tracks
     if (playingAudio) {
       playingAudio.pause();
+
+      // If clicking the SAME track, just stop and exit
+      if (selectedTrack === track.id) {
+        setPlayingAudio(null);
+        setSelectedTrack(null);
+        return;
+      }
+    }
+
+    // Play the new track
+    const audio = new Audio(previewUrl);
+    audio.onerror = () => {
+      setAudioError(`Failed to load audio for "${track.title || track.name}"`);
       setPlayingAudio(null);
       setSelectedTrack(null);
-    } else {
-      const audio = new Audio(track.preview);
-      audio.onerror = () => {
-        setAudioError(
-          `Failed to load audio for "${track.title || track.name}"`,
-        );
-        setPlayingAudio(null);
-        setSelectedTrack(null);
-      };
+    };
 
-      audio
-        .play()
-        .then(() => {
-          setPlayingAudio(audio);
-          setSelectedTrack(track.id);
-        })
-        .catch(() => {
-          setAudioError(
-            `Cannot play audio preview for "${track.title || track.name}"`,
-          );
-        });
+    audio
+      .play()
+      .then(() => {
+        setPlayingAudio(audio);
+        setSelectedTrack(track.id);
+      })
+      .catch((err) => {
+        console.error("Playback error:", err);
+        setAudioError("Browser blocked autoplay. Try clicking again.");
+      });
 
-      audio.onended = () => {
-        setPlayingAudio(null);
-        setSelectedTrack(null);
-      };
-    }
+    audio.onended = () => {
+      setPlayingAudio(null);
+      setSelectedTrack(null);
+    };
   };
 
   const handleExportPNG = async () => {
@@ -112,11 +157,9 @@ const BentoResults = ({ likedTracks, onStartNew, onClearTracks }) => {
 
     try {
       const canvas = await html2canvas(bentoGridRef.current, {
-        backgroundColor: "#ffffff",
-        scale: 2,
-        useCORS: true,
+        useCORS: true, // CHANGE: Ensure this is true
+        scale: 2, // CHANGE: Makes the PNG 2x sharper
         logging: false,
-        allowTaint: true,
       });
 
       const link = document.createElement("a");
@@ -374,18 +417,18 @@ const BentoResults = ({ likedTracks, onStartNew, onClearTracks }) => {
                         <div className="flex items-start gap-3 mb-3">
                           <div className="relative flex-shrink-0">
                             <img
-                              src={trackImage}
-                              className="w-14 h-14 rounded-lg object-cover"
-                              alt={track.title}
+                              src={track.image}
+                              // ONLY apply crossOrigin if it's NOT a UI-Avatar link
+                              crossOrigin={
+                                trackImage.includes("ui-avatars.com")
+                                  ? undefined
+                                  : "anonymous"
+                              }
+                              className="w-14 h-14 object-cover rounded-lg"
                               onError={(e) => {
-                                e.target.style.display = "none";
-                                e.target.parentElement.innerHTML = `
-                                  <div class="w-14 h-14 rounded-lg bg-accent/10 flex items-center justify-center border border-accent/20">
-                                    <svg class="w-6 h-6 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path>
-                                    </svg>
-                                  </div>
-                                `;
+                                e.target.onerror = null;
+                                e.target.src =
+                                  "https://via.placeholder.com/500?text=No+Art";
                               }}
                             />
                           </div>

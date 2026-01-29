@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Play,
@@ -18,7 +18,7 @@ import {
   Grid3x3,
 } from "lucide-react";
 import { springExpressive, buttonSpring } from "../utils/motion";
-
+import { fetchHighResArtwork } from "../services/seedRecommendationService";
 const SwipeInterface = ({
   deck,
   onBack,
@@ -32,21 +32,67 @@ const SwipeInterface = ({
   const [showNoAudioAlert, setShowNoAudioAlert] = useState(false);
   const [showMaxLikesModal, setShowMaxLikesModal] = useState(false);
   const [pendingSwipeAction, setPendingSwipeAction] = useState(null);
-
+  const [recommendations, setRecommendations] = useState([]);
   const currentTrack = deck[currentIndex];
-  const MAX_SUGGESTED = 10;
+  const MAX_SUGGESTED = 20;
+  useEffect(() => {
+    const hydrateImages = async () => {
+      // Only hydrate the next 3 tracks to save API calls
+      const tracksToHydrate = recommendations.slice(
+        currentIndex,
+        currentIndex + 3,
+      );
 
+      const updatedTracks = await Promise.all(
+        tracksToHydrate.map(async (track) => {
+          if (track.isHydrated) return track;
+          const highRes = await fetchHighResArtwork(track);
+          return { ...track, image: highRes, isHydrated: true };
+        }),
+      );
+
+      // Update your state with the new high-res versions
+      setRecommendations((prev) => {
+        const newRecs = [...prev];
+        updatedTracks.forEach((updated, i) => {
+          newRecs[currentIndex + i] = updated;
+        });
+        return newRecs;
+      });
+    };
+
+    if (recommendations.length > 0) {
+      hydrateImages();
+    }
+  }, [currentIndex, recommendations.length]);
+  useEffect(() => {
+    const hydrateNext = async () => {
+      // Look ahead 2 tracks so they are ready before the user swipes
+      const nextTracks = deck.slice(currentIndex, currentIndex + 3);
+
+      for (let track of nextTracks) {
+        if (!track.isHydrated) {
+          const highRes = await fetchHighResArtwork(track); // Use the utility we discussed
+          track.image = highRes;
+          track.isHydrated = true;
+        }
+      }
+    };
+    hydrateNext();
+  }, [currentIndex, deck]);
   const getTrackImage = (track) => {
-    if (!track) return null;
-    if (track.images?.large) return track.images.large;
-    if (track.images?.medium) return track.images.medium;
-    if (track.images?.small) return track.images.small;
+    if (!track) return "";
+    // If we've already hydrated a high-res image, use it
+    if (track.highResImage) return track.highResImage;
+    // If Last.fm provided an image string, use it
+    if (typeof track.image === "string" && track.image.startsWith("http"))
+      return track.image;
 
+    // Fallback if no image exists
     const initials =
       (track.name?.charAt(0) || "M") + (track.artist?.name?.charAt(0) || "A");
-    return `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=7D5260&color=fff&size=500&bold=true`;
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=7D5260&color=fff`;
   };
-
   const trackImage = currentTrack ? getTrackImage(currentTrack) : null;
   const hasAudio = Boolean(currentTrack?.preview);
 
@@ -278,20 +324,17 @@ const SwipeInterface = ({
             {trackImage ? (
               <img
                 src={trackImage}
-                alt={currentTrack.title || currentTrack.name}
+                alt={currentTrack?.name}
+                // ONLY apply crossOrigin if it's NOT a UI-Avatar link
+                crossOrigin={
+                  trackImage.includes("ui-avatars.com")
+                    ? undefined
+                    : "anonymous"
+                }
                 className="w-full h-full object-cover"
                 onError={(e) => {
-                  e.target.style.display = "none";
-                  const parent = e.target.parentElement;
-                  if (parent) {
-                    parent.innerHTML = `
-                      <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-accent/10 to-accent/5">
-                        <svg class="w-20 h-20 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path>
-                        </svg>
-                      </div>
-                    `;
-                  }
+                  e.target.onerror = null;
+                  e.target.src = "https://via.placeholder.com/500?text=No+Art";
                 }}
               />
             ) : (

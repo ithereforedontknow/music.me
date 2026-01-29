@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
@@ -36,7 +36,41 @@ const SeedSelection = ({ onSeedsSelected }) => {
   const [selectedSeeds, setSelectedSeeds] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const performSearch = useCallback(async (searchTerm, type) => {
+    if (!searchTerm.trim()) {
+      setSearchResults([]);
+      return;
+    }
 
+    setLoading(true);
+    setError("");
+
+    try {
+      const results = await searchSeeds(type, searchTerm);
+      setSearchResults(results);
+      if (results.length === 0) {
+        setError("No results found.");
+      }
+    } catch (err) {
+      setError("Search failed.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // 2. The Auto-Search Effect (Debounced)
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      if (query.length >= 2) {
+        // Only search if 2+ characters
+        performSearch(query, searchType);
+      } else {
+        setSearchResults([]); // Clear results if query is too short
+      }
+    }, 400); // Wait 400ms after last keystroke
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [query, searchType, performSearch]);
   const handleSearch = async () => {
     if (!query.trim()) {
       setError("Please enter a search term");
@@ -262,18 +296,22 @@ const SeedSelection = ({ onSeedsSelected }) => {
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.99 }}
                   >
-                    {result.image && (
+                    {result.image ? (
                       <img
                         src={result.image}
                         alt={result.name}
-                        className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+                        className="w-12 h-12 rounded-lg object-cover shrink-0"
                         onError={(e) => {
-                          e.target.style.display = "none";
+                          // If the image fails to load, replace it with the fallback icon
+                          e.target.onerror = null;
+                          e.target.parentElement.innerHTML = `
+                            <div class="w-12 h-12 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
+                              <svg class="w-6 h-6 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+                            </div>`;
                         }}
                       />
-                    )}
-                    {!result.image && (
-                      <div className="w-12 h-12 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
+                    ) : (
+                      <div className="w-12 h-12 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
                         <Music className="w-6 h-6 text-accent" />
                       </div>
                     )}
@@ -325,7 +363,7 @@ const SeedSelection = ({ onSeedsSelected }) => {
       {/* Tips */}
       <div className="bg-accent/5 rounded-2xl p-4 border border-accent/20">
         <div className="flex items-start gap-3">
-          <Sparkles className="w-5 h-5 text-accent mt-0.5 flex-shrink-0" />
+          <Sparkles className="w-5 h-5 text-accent mt-0.5 shrink-0" />
           <div>
             <h4 className="text-sm font-medium text-primary mb-2">Pro Tips</h4>
             <ul className="text-sm text-secondary space-y-1">
