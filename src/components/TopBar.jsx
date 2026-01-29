@@ -31,7 +31,6 @@ const TopBar = ({
           </div>
           <div>
             <h1 className="text-lg font-bold text-primary">music.me</h1>
-            <p className="text-xs text-secondary">Last.fm Discovery</p>
           </div>
         </motion.button>
 

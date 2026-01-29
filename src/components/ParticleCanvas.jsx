@@ -1,4 +1,3 @@
-// Updated ParticleCanvas.jsx
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { Music2, Music, Headphones, Disc } from "lucide-react";

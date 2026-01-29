@@ -3,23 +3,18 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "./hooks/useTheme";
 import { pageTransition } from "./utils/motion";
 
+// Components
 import TopBar from "./components/TopBar";
 import LogoMorph from "./components/LogoMorph";
-import PromptInput from "./components/PromptInput";
+import SeedSelection from "./components/SeedSelection";
 import GenerationSequence from "./components/GenerationSequence";
 import SwipeInterface from "./components/SwipeInterface";
 import BentoResults from "./components/BentoResults";
 import ParticleCanvas from "./components/ParticleCanvas";
 import ThemePicker from "./components/ThemePicker";
-import FiltersModal from "./components/FiltersModal";
 
 // Services
-import {
-  getTextBasedRecommendations,
-  getMoodBasedRecommendations,
-  getGenreBasedRecommendations,
-  getMockRecommendations,
-} from "./services/recommendationService";
+import { getRecommendationsFromSeeds } from "./services/seedRecommendationService";
 
 const App = () => {
   const [flowState, setFlowState] = useState("logo");
@@ -28,11 +23,7 @@ const App = () => {
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingMessage, setLoadingMessage] = useState("");
   const [showResults, setShowResults] = useState(false);
-  const [filters, setFilters] = useState({
-    moods: [],
-    genres: [],
-  });
-  const [showFilters, setShowFilters] = useState(false);
+  const [currentSeeds, setCurrentSeeds] = useState([]);
 
   const theme = useTheme();
 
@@ -58,10 +49,11 @@ const App = () => {
   }, [likedTracks]);
 
   const handleLogoComplete = () => {
-    setTimeout(() => setFlowState("prompt"), 800);
+    setTimeout(() => setFlowState("seeds"), 800);
   };
 
-  const handleSearch = async (promptText) => {
+  const handleSeedsSelected = async (seeds) => {
+    setCurrentSeeds(seeds);
     setFlowState("generating");
 
     const progressInterval = setInterval(() => {
@@ -74,49 +66,34 @@ const App = () => {
       });
     }, 30);
 
-    setLoadingMessage("Searching Last.fm for music...");
+    // Build descriptive message
+    const seedNames = seeds.map((s) => s.name).join(", ");
+    const seedTypes = [...new Set(seeds.map((s) => s.type))];
+    const typeText = seedTypes.length === 1 ? seedTypes[0] : "your selections";
+
+    setLoadingMessage(`Finding music similar to ${seedNames}...`);
 
     try {
-      let allRecommendations = [];
+      setLoadingMessage(`Analyzing ${typeText}...`);
 
-      // Get text-based recommendations
-      if (promptText && promptText.trim()) {
-        setLoadingMessage("Analyzing your search query...");
-        const textRecs = await getTextBasedRecommendations(promptText);
-        allRecommendations = [...allRecommendations, ...textRecs];
+      // Get recommendations using Last.fm's collaborative filtering
+      const recommendations = await getRecommendationsFromSeeds(seeds);
+
+      setLoadingMessage(`Found ${recommendations.length} perfect matches!`);
+
+      if (recommendations.length === 0) {
+        console.warn("No recommendations found");
+        alert(
+          "No recommendations found for these seeds. Please try different selections.",
+        );
+        setFlowState("seeds");
+        clearInterval(progressInterval);
+        setLoadingProgress(0);
+        return;
       }
 
-      // Add mood-based recommendations
-      if (filters.moods.length > 0) {
-        setLoadingMessage("Finding tracks matching your mood...");
-        const moodRecs = await getMoodBasedRecommendations(filters.moods);
-        allRecommendations = [...allRecommendations, ...moodRecs];
-      }
-
-      // Add genre-based recommendations
-      if (filters.genres.length > 0) {
-        setLoadingMessage("Discovering tracks from your genres...");
-        const genreRecs = await getGenreBasedRecommendations(filters.genres);
-        allRecommendations = [...allRecommendations, ...genreRecs];
-      }
-
-      // Remove duplicates
-      const uniqueTracks = allRecommendations.filter(
-        (track, index, self) =>
-          index === self.findIndex((t) => t.id === track.id),
-      );
-
-      // If no recommendations, use mock data
-      if (uniqueTracks.length === 0) {
-        console.warn("No recommendations found, using mock data");
-        const mockRecs = getMockRecommendations(promptText || "music");
-        setGeneratedDeck(mockRecs);
-      } else {
-        setGeneratedDeck(uniqueTracks.slice(0, 20));
-      }
-
+      setGeneratedDeck(recommendations);
       setLikedTracks([]);
-      setLoadingMessage("Ready to discover music!");
 
       setTimeout(() => {
         setFlowState("swiping");
@@ -126,31 +103,18 @@ const App = () => {
       }, 800);
     } catch (error) {
       console.error("Recommendation error:", error);
-
-      // Fallback to mock data
-      const mockRecs = getMockRecommendations(promptText || "music");
-      setGeneratedDeck(mockRecs);
-      setLikedTracks([]);
-
-      setTimeout(() => {
-        setFlowState("swiping");
-        setLoadingProgress(0);
-        setLoadingMessage("");
-        clearInterval(progressInterval);
-      }, 800);
+      alert("Failed to get recommendations. Please try again.");
+      setFlowState("seeds");
+      clearInterval(progressInterval);
+      setLoadingProgress(0);
     }
   };
 
-  const handleFiltersUpdate = (newFilters) => {
-    setFilters(newFilters);
-    setShowFilters(false);
-  };
-
   const handleBackToStart = () => {
-    setFlowState("prompt");
+    setFlowState("seeds");
     setGeneratedDeck([]);
     setShowResults(false);
-    setShowFilters(false);
+    setCurrentSeeds([]);
   };
 
   const handleSaveTrack = (track) => {
@@ -177,18 +141,16 @@ const App = () => {
   };
 
   const handleStartNew = () => {
-    setFlowState("prompt");
+    setFlowState("seeds");
     setGeneratedDeck([]);
     setShowResults(false);
-    setShowFilters(false);
+    setCurrentSeeds([]);
   };
 
   const handleClearLikedTracks = () => {
     setLikedTracks([]);
     localStorage.removeItem("musicme-liked-tracks");
   };
-
-  const activeFilterCount = filters.moods.length + filters.genres.length;
 
   return (
     <div className="min-h-screen w-full bg-primary text-primary font-sans overflow-hidden">
@@ -197,8 +159,8 @@ const App = () => {
         likedTracks={likedTracks}
         onHomeClick={handleBackToStart}
         onViewResults={handleViewResults}
-        onShowFilters={() => setShowFilters(true)}
-        activeFilterCount={activeFilterCount}
+        onShowFilters={null} // No filters in seed-based system
+        activeFilterCount={0}
         theme={theme}
       />
 
@@ -219,28 +181,16 @@ const App = () => {
               </motion.div>
             )}
 
-            {flowState === "prompt" && !showFilters && (
+            {flowState === "seeds" && (
               <motion.div
-                key="prompt"
+                key="seeds"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 className="py-8"
               >
-                <PromptInput
-                  onSearch={handleSearch}
-                  onShowFilters={() => setShowFilters(true)}
-                  filters={filters}
-                />
+                <SeedSelection onSeedsSelected={handleSeedsSelected} />
               </motion.div>
-            )}
-
-            {showFilters && (
-              <FiltersModal
-                filters={filters}
-                onUpdate={handleFiltersUpdate}
-                onClose={() => setShowFilters(false)}
-              />
             )}
 
             {flowState === "generating" && (
@@ -252,6 +202,7 @@ const App = () => {
                 <GenerationSequence
                   progress={loadingProgress}
                   message={loadingMessage}
+                  preferences={currentSeeds}
                 />
               </motion.div>
             )}

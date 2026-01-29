@@ -12,6 +12,10 @@ import {
   ThumbsUp,
   ThumbsDown,
   Sparkles,
+  Music,
+  PartyPopper,
+  X,
+  Grid3x3,
 } from "lucide-react";
 import { springExpressive, buttonSpring } from "../utils/motion";
 
@@ -30,72 +34,26 @@ const SwipeInterface = ({
   const [pendingSwipeAction, setPendingSwipeAction] = useState(null);
 
   const currentTrack = deck[currentIndex];
+  const MAX_SUGGESTED = 10;
 
-  // Universal image getter for your service
   const getTrackImage = (track) => {
     if (!track) return null;
-
-    // Try your service's image structure first
     if (track.images?.large) return track.images.large;
     if (track.images?.medium) return track.images.medium;
     if (track.images?.small) return track.images.small;
 
-    // Fallback to other possible properties
-    if (track.thumbnail) return track.thumbnail;
-    if (track.album?.cover_big) return track.album.cover_big;
-    if (track.album?.cover_small) return track.album.cover_small;
-
-    // Generate placeholder if no image
-    const placeholderText = encodeURIComponent(
-      (track.name?.charAt(0) || "M") + (track.artist?.name?.charAt(0) || "A"),
-    );
-    return `https://ui-avatars.com/api/?name=${placeholderText}&background=7D5260&color=fff&size=500`;
+    const initials =
+      (track.name?.charAt(0) || "M") + (track.artist?.name?.charAt(0) || "A");
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=7D5260&color=fff&size=500&bold=true`;
   };
 
   const trackImage = currentTrack ? getTrackImage(currentTrack) : null;
   const hasAudio = Boolean(currentTrack?.preview);
-  const MAX_SUGGESTED = 10;
-  const getSafeImageUrl = (url, fallbackText = "M") => {
-    if (!url) {
-      return `https://ui-avatars.com/api/?name=${encodeURIComponent(fallbackText)}&background=7D5260&color=fff&size=300`;
-    }
-
-    // Check if URL is valid
-    try {
-      new URL(url);
-      return url;
-    } catch {
-      return `https://ui-avatars.com/api/?name=${encodeURIComponent(fallbackText)}&background=7D5260&color=fff&size=300`;
-    }
-  };
-  const getSafeImage = (track) => {
-    if (!track) return null;
-
-    // Try different image sources in order
-    if (
-      track.images?.large &&
-      !track.images.large.includes("via.placeholder")
-    ) {
-      return track.images.large;
-    }
-    if (track.images?.medium) return track.images.medium;
-    if (track.images?.small) return track.images.small;
-    if (track.album?.cover_big) return track.album.cover_big;
-    if (track.album?.cover_medium) return track.album.cover_medium;
-    if (track.album?.cover_small) return track.album.cover_small;
-    if (track.thumbnail) return track.thumbnail;
-
-    // Generate a reliable placeholder
-    const firstChar = track.name?.charAt(0) || "M";
-    return `https://ui-avatars.com/api/?name=${encodeURIComponent(firstChar)}&background=7D5260&color=fff&size=300`;
-  };
 
   const handleSwipe = (direction) => {
-    // Prevent multiple swipes
     if (swipeDirection) return;
 
     if (direction === "right") {
-      // Show modal if at "limit" (but we'll allow adding anyway)
       if (likedTracks.length >= MAX_SUGGESTED) {
         setPendingSwipeAction({ direction, track: currentTrack });
         setShowMaxLikesModal(true);
@@ -107,7 +65,6 @@ const SwipeInterface = ({
   };
 
   const proceedWithSwipe = (direction) => {
-    // Save track first if swiping right
     if (direction === "right" && onSave) {
       onSave(currentTrack);
     }
@@ -130,7 +87,6 @@ const SwipeInterface = ({
     setShowMaxLikesModal(false);
 
     if (choice === "add-more" && pendingSwipeAction && onSave) {
-      // Actually save the track
       onSave(pendingSwipeAction.track);
       proceedWithSwipe(pendingSwipeAction.direction);
     } else if (choice === "view-bento") {
@@ -158,14 +114,14 @@ const SwipeInterface = ({
         transition={springExpressive}
         className="min-h-[60vh] flex flex-col items-center justify-center p-8 text-center"
       >
-        <div className="text-5xl mb-4">🎵</div>
-        <h3 className="text-2xl font-semibold text-gray-800 mb-2">
+        <Music className="w-16 h-16 text-accent mb-4" />
+        <h3 className="text-2xl font-semibold text-primary mb-2">
           No tracks found
         </h3>
-        <p className="text-gray-600 mb-6">Try different moods or genres.</p>
+        <p className="text-secondary mb-6">Try different seeds.</p>
         <motion.button
           onClick={onBack}
-          className="bg-pink-500 text-white px-6 py-3 rounded-full shadow-lg hover:shadow-xl transition-all hover:bg-pink-600 font-medium"
+          className="bg-accent text-on-accent px-6 py-3 rounded-full shadow-m3-2 hover:shadow-m3-3 transition-all font-medium"
           {...buttonSpring}
         >
           Try Again
@@ -183,16 +139,16 @@ const SwipeInterface = ({
         transition={springExpressive}
         className="min-h-[60vh] flex flex-col items-center justify-center p-6 text-center"
       >
-        <div className="text-5xl mb-4">🎉</div>
-        <h3 className="text-2xl font-semibold text-gray-800 mb-3">
+        <PartyPopper className="w-16 h-16 text-accent mb-4" />
+        <h3 className="text-2xl font-semibold text-primary mb-3">
           Discovery Complete!
         </h3>
-        <p className="text-gray-600 mb-6">
+        <p className="text-secondary mb-6">
           You saved {likedTracks.length} out of {deck.length} tracks
         </p>
         <motion.button
           onClick={onBack}
-          className="bg-pink-500 text-white px-6 py-3 rounded-full shadow-lg hover:shadow-xl transition-all hover:bg-pink-600 font-medium flex items-center gap-2"
+          className="bg-accent text-on-accent px-6 py-3 rounded-full shadow-m3-2 hover:shadow-m3-3 transition-all font-medium flex items-center gap-2"
           {...buttonSpring}
         >
           Start New Discovery
@@ -211,25 +167,25 @@ const SwipeInterface = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
           >
             <motion.div
               initial={{ scale: 0.9 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.9 }}
-              className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-gray-200"
+              className="bg-card rounded-3xl p-6 max-w-md w-full shadow-2xl border border-theme"
             >
               <div className="text-center mb-6">
-                <div className="text-5xl mb-4">🍱</div>
-                <h3 className="text-xl font-semibold text-gray-800 mb-3">
+                <Grid3x3 className="w-12 h-12 text-accent mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-primary mb-3">
                   Nice Collection! ({likedTracks.length} tracks)
                 </h3>
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-pink-100 rounded-full mb-4">
-                  <p className="text-sm font-medium text-pink-800">
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-accent/10 rounded-full mb-4 border border-accent/20">
+                  <p className="text-sm font-medium text-accent">
                     {likedTracks.length} tracks saved
                   </p>
                 </div>
-                <p className="text-gray-600">
+                <p className="text-secondary">
                   You can add more tracks or view your collection!
                 </p>
               </div>
@@ -237,7 +193,7 @@ const SwipeInterface = ({
               <div className="space-y-3">
                 <motion.button
                   onClick={() => handleModalChoice("add-more")}
-                  className="bg-pink-500 text-white px-6 py-3 rounded-full shadow-lg hover:shadow-xl transition-all hover:bg-pink-600 font-medium w-full flex items-center justify-center gap-2"
+                  className="bg-accent text-on-accent px-6 py-3 rounded-full shadow-m3-2 hover:shadow-m3-3 transition-all font-medium w-full flex items-center justify-center gap-2"
                   {...buttonSpring}
                 >
                   <Plus className="w-4 h-4" />
@@ -246,7 +202,7 @@ const SwipeInterface = ({
 
                 <motion.button
                   onClick={() => handleModalChoice("view-bento")}
-                  className="border-2 border-gray-300 text-pink-500 px-6 py-3 rounded-full hover:border-pink-500 hover:bg-pink-50 transition-all font-medium bg-white w-full flex items-center justify-center gap-2"
+                  className="border-2 border-theme text-primary px-6 py-3 rounded-full hover:border-accent hover:bg-accent/5 transition-all font-medium bg-card w-full flex items-center justify-center gap-2"
                   {...buttonSpring}
                 >
                   <Eye className="w-4 h-4" />
@@ -261,21 +217,21 @@ const SwipeInterface = ({
       {/* Progress */}
       <div className="space-y-1">
         <div className="flex justify-between items-center">
-          <span className="text-gray-600">
+          <span className="text-secondary">
             Track {currentIndex + 1} of {deck.length}
           </span>
           {likedTracks.length > 0 && (
             <div className="flex items-center gap-2">
-              <Heart className="w-3.5 h-3.5 text-pink-500" />
-              <span className="text-gray-800 font-medium">
+              <Heart className="w-3.5 h-3.5 text-accent" />
+              <span className="text-primary font-medium">
                 {likedTracks.length} saved
               </span>
             </div>
           )}
         </div>
-        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+        <div className="h-2 bg-secondary rounded-full overflow-hidden">
           <motion.div
-            className="h-full bg-pink-500 rounded-full transition-all duration-500"
+            className="h-full bg-accent rounded-full transition-all duration-500"
             initial={{ width: 0 }}
             animate={{ width: `${((currentIndex + 1) / deck.length) * 100}%` }}
             transition={springExpressive}
@@ -293,20 +249,20 @@ const SwipeInterface = ({
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 1.2 }}
-              className={`absolute inset-0 z-30 pointer-events-none flex items-center justify-center ${
-                swipeDirection === "right" ? "text-pink-500" : "text-gray-500"
-              }`}
+              className="absolute inset-0 z-30 pointer-events-none flex items-center justify-center"
             >
-              <div className="text-6xl">
-                {swipeDirection === "right" ? "❤️" : "✕"}
-              </div>
+              {swipeDirection === "right" ? (
+                <Heart className="w-16 h-16 text-accent fill-accent" />
+              ) : (
+                <X className="w-16 h-16 text-secondary" />
+              )}
             </motion.div>
           )}
         </AnimatePresence>
 
         {/* Main Card */}
         <motion.div
-          className="relative bg-white rounded-2xl overflow-hidden shadow-xl"
+          className="relative bg-card rounded-2xl overflow-hidden shadow-m3-3 border border-theme"
           animate={{
             x:
               swipeDirection === "left"
@@ -317,34 +273,30 @@ const SwipeInterface = ({
           }}
           transition={springExpressive}
         >
-          {/* Album Art - FIXED: Using proper image getter */}
-          <div className="aspect-square relative overflow-hidden bg-gradient-to-br from-pink-100 to-purple-100">
+          {/* Album Art */}
+          <div className="aspect-square relative overflow-hidden bg-gradient-to-br from-accent/10 to-accent/5">
             {trackImage ? (
               <img
-                src={getSafeImageUrl(
-                  trackImage,
-                  currentTrack.name?.charAt(0) || "M",
-                )}
+                src={trackImage}
                 alt={currentTrack.title || currentTrack.name}
                 className="w-full h-full object-cover"
                 onError={(e) => {
                   e.target.style.display = "none";
-                  // Create fallback container
                   const parent = e.target.parentElement;
                   if (parent) {
-                    const fallback = document.createElement("div");
-                    fallback.className =
-                      "w-full h-full flex items-center justify-center bg-gradient-to-br from-pink-100 to-purple-100";
-                    fallback.innerHTML = `
-                      <div class="text-4xl">🎵</div>
+                    parent.innerHTML = `
+                      <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-accent/10 to-accent/5">
+                        <svg class="w-20 h-20 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path>
+                        </svg>
+                      </div>
                     `;
-                    parent.appendChild(fallback);
                   }
                 }}
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-pink-100 to-purple-100">
-                <div className="text-4xl">🎵</div>
+              <div className="w-full h-full flex items-center justify-center">
+                <Music className="w-20 h-20 text-accent" />
               </div>
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
@@ -352,10 +304,10 @@ const SwipeInterface = ({
             {/* Play Button */}
             <motion.button
               onClick={togglePlay}
-              className={`absolute top-3 right-3 w-12 h-12 rounded-full flex items-center justify-center shadow-lg ${
+              className={`absolute top-3 right-3 w-12 h-12 rounded-full flex items-center justify-center shadow-m3-2 ${
                 hasAudio
-                  ? "bg-pink-500 text-white"
-                  : "bg-gray-200 text-gray-500 cursor-not-allowed"
+                  ? "bg-accent text-on-accent"
+                  : "bg-secondary text-secondary cursor-not-allowed"
               }`}
               whileHover={hasAudio ? { scale: 1.1 } : {}}
               whileTap={hasAudio ? { scale: 0.9 } : {}}
@@ -378,7 +330,7 @@ const SwipeInterface = ({
                 <p className="text-gray-200">{currentTrack.artist?.name}</p>
                 {currentTrack.reason && (
                   <p className="text-sm text-gray-300 italic">
-                    "{currentTrack.reason}"
+                    {currentTrack.reason}
                   </p>
                 )}
               </div>
@@ -390,7 +342,7 @@ const SwipeInterface = ({
             <div className="grid grid-cols-2 gap-3">
               <motion.button
                 onClick={() => handleSwipe("left")}
-                className="border-2 border-gray-300 text-gray-700 px-6 py-3 rounded-full hover:border-gray-400 hover:bg-gray-50 transition-all font-medium bg-white flex flex-col items-center gap-2"
+                className="border-2 border-theme text-primary px-6 py-3 rounded-full hover:border-secondary hover:bg-secondary transition-all font-medium bg-card flex flex-col items-center gap-2"
                 {...buttonSpring}
               >
                 <ThumbsDown className="w-5 h-5" />
@@ -399,7 +351,7 @@ const SwipeInterface = ({
 
               <motion.button
                 onClick={() => handleSwipe("right")}
-                className="bg-pink-500 text-white px-6 py-3 rounded-full shadow-lg hover:shadow-xl transition-all hover:bg-pink-600 font-medium flex flex-col items-center gap-2"
+                className="bg-accent text-on-accent px-6 py-3 rounded-full shadow-m3-2 hover:shadow-m3-3 transition-all font-medium flex flex-col items-center gap-2"
                 {...buttonSpring}
               >
                 <ThumbsUp className="w-5 h-5" />
@@ -434,7 +386,7 @@ const SwipeInterface = ({
           }
           target="_blank"
           rel="noopener noreferrer"
-          className="border-2 border-gray-300 text-pink-500 px-6 py-3 rounded-full hover:border-pink-500 hover:bg-pink-50 transition-all font-medium bg-white flex items-center justify-center gap-2"
+          className="border-2 border-theme text-primary px-6 py-3 rounded-full hover:border-accent hover:bg-accent/5 transition-all font-medium bg-card flex items-center justify-center gap-2"
           {...buttonSpring}
         >
           <ExternalLink className="w-4 h-4" />
@@ -444,10 +396,10 @@ const SwipeInterface = ({
         <motion.button
           onClick={onViewResults}
           disabled={likedTracks.length === 0}
-          className={`flex items-center justify-center gap-2 py-3 rounded-xl ${
+          className={`flex items-center justify-center gap-2 py-3 rounded-full transition-all ${
             likedTracks.length > 0
-              ? "bg-pink-100 text-pink-800 px-6 rounded-full shadow hover:shadow-lg transition-all font-medium hover:bg-pink-200"
-              : "bg-gray-200 text-gray-500 px-6 py-3 rounded-xl cursor-not-allowed"
+              ? "bg-accent/10 text-accent px-6 shadow-m3-2 hover:shadow-m3-3 font-medium hover:bg-accent/20 border border-accent/20"
+              : "bg-secondary text-secondary/60 px-6 cursor-not-allowed border border-theme"
           }`}
           {...buttonSpring}
         >
@@ -463,9 +415,9 @@ const SwipeInterface = ({
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-3 bg-pink-50 rounded-2xl border border-pink-100"
+          className="p-3 bg-accent/5 rounded-2xl border border-accent/20"
         >
-          <h4 className="text-sm font-medium text-pink-800 mb-2">
+          <h4 className="text-sm font-medium text-accent mb-2">
             Your Bento ({likedTracks.length} tracks)
           </h4>
           <div className="grid grid-cols-4 gap-1.5">
@@ -477,14 +429,11 @@ const SwipeInterface = ({
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: i * 0.05 }}
-                  className="aspect-square rounded-lg overflow-hidden bg-white border border-pink-200"
+                  className="aspect-square rounded-lg overflow-hidden bg-card border border-accent/20"
                 >
                   {trackImg ? (
                     <img
-                      src={getSafeImageUrl(
-                        trackImg,
-                        track.name?.charAt(0) || "M",
-                      )}
+                      src={trackImg}
                       className="w-full h-full object-cover"
                       alt=""
                       onError={(e) => {
@@ -492,16 +441,18 @@ const SwipeInterface = ({
                         const parent = e.target.parentElement;
                         if (parent) {
                           parent.innerHTML = `
-                            <div class="w-full h-full flex items-center justify-center bg-pink-100 rounded-lg">
-                              <div class="text-lg">🎵</div>
+                            <div class="w-full h-full flex items-center justify-center bg-accent/10 rounded-lg">
+                              <svg class="w-6 h-6 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path>
+                              </svg>
                             </div>
                           `;
                         }
                       }}
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-pink-100 rounded-lg">
-                      <div className="text-lg">🎵</div>
+                    <div className="w-full h-full flex items-center justify-center bg-accent/10">
+                      <Music className="w-6 h-6 text-accent" />
                     </div>
                   )}
                 </motion.div>

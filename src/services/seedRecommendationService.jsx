@@ -517,7 +517,55 @@ export const getGenreBasedRecommendations = async (genres) => {
   }
   return recommendationService.getGenreBasedRecommendations(genres, 15);
 };
+export const searchSeeds = async (type, query) => {
+  // Ensure service is initialized
+  if (!recommendationService) {
+    recommendationService = new RecommendationService();
+  }
 
+  try {
+    let results = [];
+
+    // Inside your searchSeeds function in seedRecommendationService.jsx
+    if (type === "artist") {
+      const artists = await recommendationService.lastFM.searchArtists(query);
+      results = artists.map((artist) => ({
+        id: artist.mbid || `artist_${artist.name}`,
+        name: artist.name,
+        artist: "Artist", // We hardcode this label for the search UI
+        image: artist.image?.find((i) => i.size === "large")?.["#text"] || null,
+        type: "artist",
+      }));
+    } else if (type === "track") {
+      const tracks = await recommendationService.lastFM.searchTracks(query);
+      results = tracks.map((track) => ({
+        ...track,
+        // Fix the object issue here:
+        artist:
+          typeof track.artist === "object" ? track.artist.name : track.artist,
+        image: track.images?.large || null,
+        type: "track",
+      }));
+    } else if (type === "tag") {
+      // Last.fm tag search is strict, so we simply return the query as a valid tag
+      // allowing the user to select exactly what they typed
+      results = [
+        {
+          id: `tag_${query.toLowerCase()}`,
+          name: query, // e.g., "Rock"
+          artist: "Genre / Mood",
+          image: null, // Tags usually don't have distinct images
+          type: "tag",
+        },
+      ];
+    }
+
+    return results;
+  } catch (error) {
+    console.error("Error searching seeds:", error);
+    return [];
+  }
+};
 export const getMockRecommendations = (prompt) => {
   return [
     {
@@ -560,4 +608,70 @@ export const getMockRecommendations = (prompt) => {
       source: "mock",
     },
   ];
+};
+
+export const getRecommendationsFromSeeds = async (seeds) => {
+  if (!recommendationService) {
+    recommendationService = new RecommendationService();
+  }
+
+  try {
+    let allResults = [];
+
+    // Process each seed based on its type
+    for (const seed of seeds) {
+      let tracks = [];
+
+      if (seed.type === "artist") {
+        // 1. Get similar artists, then their top tracks
+        const similar = await recommendationService.lastFM.getSimilarArtists(
+          seed.name,
+          5,
+        );
+        for (const artist of similar) {
+          const top = await recommendationService.lastFM.getArtistTopTracks(
+            artist.name,
+            2,
+          );
+          tracks.push(
+            ...top.map((t) => ({ ...t, reason: `Similar to ${seed.name}` })),
+          );
+        }
+      } else if (seed.type === "track") {
+        // 2. Get tracks similar to this specific track
+        const similarTracks =
+          await recommendationService.lastFM.getSimilarTracks(
+            seed.artist || "",
+            seed.name,
+            10,
+          );
+        tracks.push(
+          ...similarTracks.map((t) => ({
+            ...t,
+            reason: `Matches ${seed.name}`,
+          })),
+        );
+      } else if (seed.type === "tag") {
+        // 3. Get top tracks for a genre/mood tag
+        const tagTracks = await recommendationService.lastFM.getTopTracksByTag(
+          seed.name,
+          10,
+        );
+        tracks.push(
+          ...tagTracks.map((t) => ({ ...t, reason: `Top ${seed.name} track` })),
+        );
+      }
+
+      allResults.push(...tracks);
+    }
+
+    // Shuffle, remove duplicates, and limit to 20 tracks
+    const uniqueTracks = recommendationService.removeDuplicates(allResults);
+    return uniqueTracks
+      .sort(() => Math.random() - 0.5) // Randomize the mix
+      .slice(0, 20);
+  } catch (error) {
+    console.error("Failed to get recommendations from seeds:", error);
+    return getMockRecommendations("your seeds");
+  }
 };

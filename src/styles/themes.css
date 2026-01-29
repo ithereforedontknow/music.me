@@ -16,6 +16,17 @@
     --card-bg: #ffffff;
     --card-border: #e0e0e0;
 }
+[data-theme="light"] {
+    --color-primary: #ffffff;
+    --color-secondary: #f3f4f6;
+    --color-tertiary: #e5e7eb;
+    --color-card: #ffffff;
+    --color-accent: #ec4899;
+    --text-primary: #1f2937;
+    --text-secondary: #6b7280;
+    --text-on-accent: #ffffff;
+    --border-theme: #e5e7eb;
+}
 
 [data-theme="dark"] {
     --bg-primary: #202124;
@@ -84,7 +95,23 @@
     --card-bg: #15271d;
     --card-border: #2d4a38;
 }
+.shadow-m3-1 {
+    box-shadow:
+        0 1px 2px 0 rgba(0, 0, 0, 0.3),
+        0 1px 3px 1px rgba(0, 0, 0, 0.15);
+}
 
+.shadow-m3-2 {
+    box-shadow:
+        0 1px 2px 0 rgba(0, 0, 0, 0.3),
+        0 2px 6px 2px rgba(0, 0, 0, 0.15);
+}
+
+.shadow-m3-3 {
+    box-shadow:
+        0 4px 8px 3px rgba(0, 0, 0, 0.15),
+        0 1px 3px 0 rgba(0, 0, 0, 0.3);
+}
 [data-theme="gruvbox"] {
     --bg-primary: #282828;
     --bg-secondary: #3c3836;
