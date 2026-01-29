@@ -1,33 +1,42 @@
+// Updated GenerationSequence.jsx
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { Sparkles, Zap, Brain, Music } from "lucide-react";
+import {
+  Sparkles,
+  Zap,
+  Brain,
+  Music,
+  Loader2,
+  Target,
+  Search,
+  CheckCircle,
+} from "lucide-react";
 import { springExpressive, springExpressiveBouncy } from "../utils/motion";
 
 const GenerationSequence = ({ progress, preferences, message }) => {
-  const [currentEmoji, setCurrentEmoji] = useState("🎵");
+  const [currentIcon, setCurrentIcon] = useState(Music);
   const [particles, setParticles] = useState([]);
 
-  const emojiSequence = [
-    { emoji: "🎵", label: "Starting...", stage: 0 },
-    { emoji: "🧠", label: "Thinking...", stage: 20 },
-    { emoji: "🔍", label: "Searching...", stage: 40 },
-    { emoji: "🎯", label: "Matching...", stage: 60 },
-    { emoji: "✨", label: "Perfecting...", stage: 80 },
-    { emoji: "🚀", label: "Ready!", stage: 95 },
+  const stageSequence = [
+    { icon: Music, label: "Starting...", stage: 0 },
+    { icon: Brain, label: "Thinking...", stage: 20 },
+    { icon: Search, label: "Searching...", stage: 40 },
+    { icon: Target, label: "Matching...", stage: 60 },
+    { icon: Sparkles, label: "Perfecting...", stage: 80 },
+    { icon: CheckCircle, label: "Ready!", stage: 95 },
   ];
 
   useEffect(() => {
-    const currentStage = emojiSequence.find(
+    const currentStage = stageSequence.find(
       (stage, i) =>
         progress >= stage.stage &&
-        (i === emojiSequence.length - 1 ||
-          progress < emojiSequence[i + 1]?.stage),
+        (i === stageSequence.length - 1 ||
+          progress < stageSequence[i + 1]?.stage),
     );
     if (currentStage) {
-      setCurrentEmoji(currentStage.emoji);
+      setCurrentIcon(() => currentStage.icon);
     }
 
-    // Generate particles
     const newParticles = Array.from({ length: 8 }, (_, i) => ({
       id: i,
       x: Math.random() * 100,
@@ -37,6 +46,8 @@ const GenerationSequence = ({ progress, preferences, message }) => {
     setParticles(newParticles);
   }, [progress]);
 
+  const CurrentIcon = currentIcon;
+
   return (
     <div className="relative w-full max-w-md mx-auto">
       <motion.div
@@ -45,9 +56,8 @@ const GenerationSequence = ({ progress, preferences, message }) => {
         animate={{ scale: 1, opacity: 1 }}
         transition={springExpressive}
       >
-        {/* Main Content */}
         <div className="flex flex-col items-center justify-center">
-          {/* Central Emoji Display */}
+          {/* Central Icon Display */}
           <motion.div
             className="relative mb-8"
             animate={{
@@ -60,13 +70,13 @@ const GenerationSequence = ({ progress, preferences, message }) => {
             }}
           >
             <motion.div
-              className="text-7xl"
-              key={currentEmoji}
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
+              className="w-24 h-24 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center"
+              key={currentIcon.name}
+              initial={{ scale: 0, rotate: -180 }}
+              animate={{ scale: 1, rotate: 0 }}
               transition={springExpressiveBouncy}
             >
-              {currentEmoji}
+              <CurrentIcon className="w-12 h-12 text-purple-600" />
             </motion.div>
           </motion.div>
 
@@ -74,18 +84,18 @@ const GenerationSequence = ({ progress, preferences, message }) => {
           <div className="w-full mb-6">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-pink-500" />
+                <Sparkles className="w-4 h-4 text-purple-500" />
                 <span className="text-sm font-medium text-gray-800">
-                  {emojiSequence.find(
+                  {stageSequence.find(
                     (s, i) =>
                       progress >= s.stage &&
-                      (i === emojiSequence.length - 1 ||
-                        progress < emojiSequence[i + 1]?.stage),
+                      (i === stageSequence.length - 1 ||
+                        progress < stageSequence[i + 1]?.stage),
                   )?.label || "Processing..."}
                 </span>
               </div>
               <motion.span
-                className="text-lg font-semibold text-pink-500"
+                className="text-lg font-semibold text-purple-500"
                 key={Math.floor(progress)}
                 initial={{ scale: 1.2 }}
                 animate={{ scale: 1 }}
@@ -97,7 +107,7 @@ const GenerationSequence = ({ progress, preferences, message }) => {
             {/* Progress Bar */}
             <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
               <motion.div
-                className="h-full bg-pink-500 rounded-full transition-all duration-500"
+                className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-500"
                 initial={{ width: 0 }}
                 animate={{ width: `${progress}%` }}
                 transition={springExpressive}
@@ -136,7 +146,7 @@ const GenerationSequence = ({ progress, preferences, message }) => {
         {particles.map((particle) => (
           <motion.div
             key={particle.id}
-            className="absolute pointer-events-none text-lg text-pink-300"
+            className="absolute pointer-events-none text-lg text-purple-300"
             style={{
               left: `${particle.x}%`,
               top: `${particle.y}%`,
@@ -152,7 +162,7 @@ const GenerationSequence = ({ progress, preferences, message }) => {
               delay: particle.id * 0.2,
             }}
           >
-            ✨
+            <Sparkles className="w-4 h-4" />
           </motion.div>
         ))}
       </motion.div>

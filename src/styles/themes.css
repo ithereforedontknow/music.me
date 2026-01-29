@@ -1,0 +1,198 @@
+/* styles/themes.css */
+:root {
+    /* Light theme (default) */
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8f9fa;
+    --bg-tertiary: #f1f3f4;
+    --text-primary: #202124;
+    --text-secondary: #5f6368;
+    --text-tertiary: #80868b;
+    --accent: #7d5260;
+    --accent-light: #ffb6c1;
+    --border: #dadce0;
+    --border-light: #e8eaed;
+    --shadow: rgba(60, 64, 67, 0.1);
+    --shadow-light: rgba(60, 64, 67, 0.05);
+    --card-bg: #ffffff;
+    --card-border: #e0e0e0;
+}
+
+[data-theme="dark"] {
+    --bg-primary: #202124;
+    --bg-secondary: #303134;
+    --bg-tertiary: #3c4043;
+    --text-primary: #e8eaed;
+    --text-secondary: #9aa0a6;
+    --text-tertiary: #80868b;
+    --accent: #ffb6c1;
+    --accent-light: #ffd1dc;
+    --border: #5f6368;
+    --border-light: #3c4043;
+    --shadow: rgba(0, 0, 0, 0.3);
+    --shadow-light: rgba(0, 0, 0, 0.2);
+    --card-bg: #303134;
+    --card-border: #5f6368;
+}
+
+[data-theme="catppuccin-mocha"] {
+    --bg-primary: #1e1e2e;
+    --bg-secondary: #181825;
+    --bg-tertiary: #313244;
+    --text-primary: #cdd6f4;
+    --text-secondary: #a6adc8;
+    --text-tertiary: #7f849c;
+    --accent: #cba6f7;
+    --accent-light: #f5c2e7;
+    --border: #45475a;
+    --border-light: #585b70;
+    --shadow: rgba(17, 17, 27, 0.3);
+    --shadow-light: rgba(17, 17, 27, 0.2);
+    --card-bg: #313244;
+    --card-border: #45475a;
+}
+
+[data-theme="catppuccin-latte"] {
+    --bg-primary: #eff1f5;
+    --bg-secondary: #e6e9ef;
+    --bg-tertiary: #dce0e8;
+    --text-primary: #4c4f69;
+    --text-secondary: #6c6f85;
+    --text-tertiary: #9ca0b0;
+    --accent: #8839ef;
+    --accent-light: #dc8a78;
+    --border: #ccd0da;
+    --border-light: #bcc0cc;
+    --shadow: rgba(140, 152, 164, 0.1);
+    --shadow-light: rgba(140, 152, 164, 0.05);
+    --card-bg: #ffffff;
+    --card-border: #dce0e8;
+}
+
+[data-theme="forest"] {
+    --bg-primary: #1a2f23;
+    --bg-secondary: #15271d;
+    --bg-tertiary: #1f3a28;
+    --text-primary: #d4e6d9;
+    --text-secondary: #9bbc9f;
+    --text-tertiary: #7a9f7e;
+    --accent: #5db37e;
+    --accent-light: #8fd4a6;
+    --border: #2d4a38;
+    --border-light: #3e5f46;
+    --shadow: rgba(21, 39, 29, 0.3);
+    --shadow-light: rgba(21, 39, 29, 0.2);
+    --card-bg: #15271d;
+    --card-border: #2d4a38;
+}
+
+[data-theme="gruvbox"] {
+    --bg-primary: #282828;
+    --bg-secondary: #3c3836;
+    --bg-tertiary: #504945;
+    --text-primary: #ebdbb2;
+    --text-secondary: #d5c4a1;
+    --text-tertiary: #bdae93;
+    --accent: #fabd2f;
+    --accent-light: #fadb5f;
+    --border: #665c54;
+    --border-light: #7c6f64;
+    --shadow: rgba(40, 40, 40, 0.3);
+    --shadow-light: rgba(40, 40, 40, 0.2);
+    --card-bg: #3c3836;
+    --card-border: #665c54;
+}
+
+/* Apply theme variables */
+body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    transition:
+        background-color 0.3s ease,
+        color 0.3s ease;
+}
+
+/* Theme-aware utility classes */
+.bg-primary {
+    background-color: var(--bg-primary);
+}
+
+.bg-secondary {
+    background-color: var(--bg-secondary);
+}
+
+.bg-tertiary {
+    background-color: var(--bg-tertiary);
+}
+
+.text-primary {
+    color: var(--text-primary);
+}
+
+.text-secondary {
+    color: var(--text-secondary);
+}
+
+.text-tertiary {
+    color: var(--text-tertiary);
+}
+
+.border-theme {
+    border-color: var(--border);
+}
+
+.border-light {
+    border-color: var(--border-light);
+}
+
+.bg-accent {
+    background-color: var(--accent);
+}
+
+.text-accent {
+    color: var(--accent);
+}
+
+.bg-card {
+    background-color: var(--card-bg);
+    border-color: var(--card-border);
+}
+
+/* Shadow utilities */
+.shadow-theme {
+    box-shadow: 0 4px 6px var(--shadow);
+}
+
+.shadow-light {
+    box-shadow: 0 2px 4px var(--shadow-light);
+}
+
+/* Specific component theming */
+.music-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    color: var(--text-primary);
+}
+
+.music-card:hover {
+    box-shadow: 0 8px 16px var(--shadow);
+}
+
+.button-primary {
+    background-color: var(--accent);
+    color: white;
+}
+
+.button-primary:hover {
+    background-color: var(--accent-light);
+}
+
+.input-theme {
+    background-color: var(--bg-secondary);
+    border-color: var(--border);
+    color: var(--text-primary);
+}
+
+.input-theme:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-light);
+}

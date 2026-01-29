@@ -1,24 +1,25 @@
+// Updated ParticleCanvas.jsx
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
+import { Music2, Music, Headphones, Disc } from "lucide-react";
 import { springExpressive } from "../utils/motion";
 
 const ParticleCanvas = ({ isActive }) => {
   const [blobs, setBlobs] = useState([]);
 
   useEffect(() => {
-    // Create 8 blobs with different shapes and positions
     const newBlobs = Array.from({ length: 8 }, (_, i) => ({
       id: i,
-      type: i % 4, // 0: circle, 1: blob, 2: squiggle, 3: wave
-      size: Math.random() * 80 + 40, // 40-120px
-      x: Math.random() * 100, // 0-100% horizontal position
-      y: Math.random() * 100, // 0-100% vertical position
+      type: i % 4,
+      size: Math.random() * 80 + 40,
+      x: Math.random() * 100,
+      y: Math.random() * 100,
       rotation: Math.random() * 360,
-      color: `rgba(${
-        Math.floor(Math.random() * 100 + 155) // Pinkish colors 155-255
-      }, ${Math.floor(Math.random() * 50 + 100)}, ${Math.floor(
+      color: `rgba(${Math.floor(
         Math.random() * 100 + 155,
-      )}, ${Math.random() * 0.1 + 0.05})`, // 0.05-0.15 opacity
+      )}, ${Math.floor(Math.random() * 50 + 100)}, ${Math.floor(
+        Math.random() * 100 + 155,
+      )}, ${Math.random() * 0.1 + 0.05})`,
       delay: i * 0.3,
     }));
     setBlobs(newBlobs);
@@ -86,60 +87,9 @@ const ParticleCanvas = ({ isActive }) => {
         />
       ))}
 
-      {/* Corner decorative shapes */}
+      {/* Floating music icons */}
       <motion.div
-        className="absolute top-10 left-10 w-24 h-24 bg-pink-200/20 rounded-full"
-        animate={{
-          rotate: 360,
-          scale: [1, 1.3, 1],
-        }}
-        transition={{
-          rotate: { duration: 20, repeat: Infinity, ease: "linear" },
-          scale: { duration: 4, repeat: Infinity, ease: "easeInOut" },
-        }}
-      />
-
-      <motion.div
-        className="absolute top-10 right-10 w-20 h-20 bg-purple-200/20"
-        style={{ borderRadius: "30% 70% 70% 30% / 30% 30% 70% 70%" }}
-        animate={{
-          rotate: -360,
-          y: [0, -20, 0],
-        }}
-        transition={{
-          rotate: { duration: 25, repeat: Infinity, ease: "linear" },
-          y: { duration: 3, repeat: Infinity, ease: "easeInOut" },
-        }}
-      />
-
-      <motion.div
-        className="absolute bottom-10 left-10 w-28 h-28 bg-pink-300/15"
-        style={{ borderRadius: "63% 37% 54% 46% / 55% 48% 52% 45%" }}
-        animate={{
-          rotate: 180,
-          scale: [1, 1.4, 1],
-        }}
-        transition={{
-          rotate: { duration: 15, repeat: Infinity, ease: "linear" },
-          scale: { duration: 5, repeat: Infinity, ease: "easeInOut" },
-        }}
-      />
-
-      <motion.div
-        className="absolute bottom-10 right-10 w-32 h-32 bg-purple-300/10 rounded-full"
-        animate={{
-          rotate: -180,
-          borderRadius: ["50%", "40% 60% 60% 40% / 60% 30% 70% 40%", "50%"],
-        }}
-        transition={{
-          rotate: { duration: 30, repeat: Infinity, ease: "linear" },
-          borderRadius: { duration: 8, repeat: Infinity, ease: "easeInOut" },
-        }}
-      />
-
-      {/* Floating music note shapes */}
-      <motion.div
-        className="absolute top-1/4 left-1/4 text-4xl opacity-20"
+        className="absolute top-1/4 left-1/4 text-purple-300 opacity-20"
         animate={{
           y: [0, -30, 0],
           rotate: [0, 360],
@@ -149,11 +99,11 @@ const ParticleCanvas = ({ isActive }) => {
           rotate: { duration: 8, repeat: Infinity, ease: "linear" },
         }}
       >
-        🎵
+        <Music2 className="w-10 h-10" />
       </motion.div>
 
       <motion.div
-        className="absolute top-1/3 right-1/3 text-3xl opacity-15"
+        className="absolute top-1/3 right-1/3 text-pink-300 opacity-15"
         animate={{
           y: [0, 40, 0],
           rotate: [0, -360],
@@ -163,11 +113,11 @@ const ParticleCanvas = ({ isActive }) => {
           rotate: { duration: 12, repeat: Infinity, ease: "linear" },
         }}
       >
-        🎶
+        <Music className="w-8 h-8" />
       </motion.div>
 
       <motion.div
-        className="absolute bottom-1/4 left-1/3 text-5xl opacity-10"
+        className="absolute bottom-1/4 left-1/3 text-purple-200 opacity-10"
         animate={{
           y: [0, -50, 0],
           scale: [1, 1.5, 1],
@@ -178,7 +128,21 @@ const ParticleCanvas = ({ isActive }) => {
           ease: "easeInOut",
         }}
       >
-        🎧
+        <Headphones className="w-12 h-12" />
+      </motion.div>
+
+      <motion.div
+        className="absolute bottom-1/3 right-1/4 text-pink-200 opacity-10"
+        animate={{
+          rotate: 360,
+          scale: [1, 1.3, 1],
+        }}
+        transition={{
+          rotate: { duration: 20, repeat: Infinity, ease: "linear" },
+          scale: { duration: 4, repeat: Infinity, ease: "easeInOut" },
+        }}
+      >
+        <Disc className="w-14 h-14" />
       </motion.div>
     </div>
   );

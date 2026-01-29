@@ -55,6 +55,40 @@ const SwipeInterface = ({
   const trackImage = currentTrack ? getTrackImage(currentTrack) : null;
   const hasAudio = Boolean(currentTrack?.preview);
   const MAX_SUGGESTED = 10;
+  const getSafeImageUrl = (url, fallbackText = "M") => {
+    if (!url) {
+      return `https://ui-avatars.com/api/?name=${encodeURIComponent(fallbackText)}&background=7D5260&color=fff&size=300`;
+    }
+
+    // Check if URL is valid
+    try {
+      new URL(url);
+      return url;
+    } catch {
+      return `https://ui-avatars.com/api/?name=${encodeURIComponent(fallbackText)}&background=7D5260&color=fff&size=300`;
+    }
+  };
+  const getSafeImage = (track) => {
+    if (!track) return null;
+
+    // Try different image sources in order
+    if (
+      track.images?.large &&
+      !track.images.large.includes("via.placeholder")
+    ) {
+      return track.images.large;
+    }
+    if (track.images?.medium) return track.images.medium;
+    if (track.images?.small) return track.images.small;
+    if (track.album?.cover_big) return track.album.cover_big;
+    if (track.album?.cover_medium) return track.album.cover_medium;
+    if (track.album?.cover_small) return track.album.cover_small;
+    if (track.thumbnail) return track.thumbnail;
+
+    // Generate a reliable placeholder
+    const firstChar = track.name?.charAt(0) || "M";
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(firstChar)}&background=7D5260&color=fff&size=300`;
+  };
 
   const handleSwipe = (direction) => {
     // Prevent multiple swipes
@@ -287,20 +321,29 @@ const SwipeInterface = ({
           <div className="aspect-square relative overflow-hidden bg-gradient-to-br from-pink-100 to-purple-100">
             {trackImage ? (
               <img
-                src={trackImage}
+                src={getSafeImageUrl(
+                  trackImage,
+                  currentTrack.name?.charAt(0) || "M",
+                )}
                 alt={currentTrack.title || currentTrack.name}
                 className="w-full h-full object-cover"
                 onError={(e) => {
                   e.target.style.display = "none";
-                  e.target.parentElement.innerHTML = `
-                    <div class="w-full h-full flex items-center justify-center">
+                  // Create fallback container
+                  const parent = e.target.parentElement;
+                  if (parent) {
+                    const fallback = document.createElement("div");
+                    fallback.className =
+                      "w-full h-full flex items-center justify-center bg-gradient-to-br from-pink-100 to-purple-100";
+                    fallback.innerHTML = `
                       <div class="text-4xl">🎵</div>
-                    </div>
-                  `;
+                    `;
+                    parent.appendChild(fallback);
+                  }
                 }}
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center">
+              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-pink-100 to-purple-100">
                 <div className="text-4xl">🎵</div>
               </div>
             )}
@@ -438,16 +481,22 @@ const SwipeInterface = ({
                 >
                   {trackImg ? (
                     <img
-                      src={trackImg}
+                      src={getSafeImageUrl(
+                        trackImg,
+                        track.name?.charAt(0) || "M",
+                      )}
                       className="w-full h-full object-cover"
                       alt=""
                       onError={(e) => {
                         e.target.style.display = "none";
-                        e.target.parentElement.innerHTML = `
-                          <div class="w-full h-full flex items-center justify-center bg-pink-100 rounded-lg">
-                            <div class="text-lg">🎵</div>
-                          </div>
-                        `;
+                        const parent = e.target.parentElement;
+                        if (parent) {
+                          parent.innerHTML = `
+                            <div class="w-full h-full flex items-center justify-center bg-pink-100 rounded-lg">
+                              <div class="text-lg">🎵</div>
+                            </div>
+                          `;
+                        }
                       }}
                     />
                   ) : (

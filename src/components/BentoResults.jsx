@@ -11,48 +11,45 @@ import {
   Grid,
   ChevronRight,
   Sparkles,
+  Trash2,
+  Share2,
+  Copy,
+  Check,
+  Pause,
 } from "lucide-react";
 import html2canvas from "html2canvas";
 import { springExpressive, buttonSpring, fadeInUp } from "../utils/motion";
 
-const BentoResults = ({ likedTracks, onStartNew }) => {
+const BentoResults = ({ likedTracks, onStartNew, onClearTracks }) => {
   const [selectedTrack, setSelectedTrack] = useState(null);
   const [playingAudio, setPlayingAudio] = useState(null);
   const [exporting, setExporting] = useState(false);
   const [audioError, setAudioError] = useState(null);
+  const [copied, setCopied] = useState(false);
+  const [showShareOptions, setShowShareOptions] = useState(false);
   const bentoGridRef = useRef(null);
 
-  // Add this function at the top of BentoResults component
   const getTrackImage = (track) => {
     if (!track) return null;
 
-    // Try your service's image structure first
     if (track.images?.large) return track.images.large;
     if (track.images?.medium) return track.images.medium;
     if (track.images?.small) return track.images.small;
 
-    // Fallback to other possible properties
-    if (track.thumbnail) return track.thumbnail;
-    if (track.album?.cover_big) return track.album.cover_big;
-    if (track.album?.cover_small) return track.album.cover_small;
-
-    // Generate placeholder if no image
-    const placeholderText = encodeURIComponent(
-      (track.name?.charAt(0) || "M") + (track.artist?.name?.charAt(0) || "A"),
-    );
-    return `https://ui-avatars.com/api/?name=${placeholderText}&background=7D5260&color=fff&size=500`;
+    const initials =
+      (track.name?.charAt(0) || "M") + (track.artist?.name?.charAt(0) || "A");
+    const colors = ["6366f1", "ec4899", "8b5cf6", "14b8a6", "f59e0b"];
+    const color = colors[initials.charCodeAt(0) % colors.length];
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=${color}&color=fff&size=500&bold=true`;
   };
 
   const getGridPages = () => {
     if (likedTracks.length === 0) return [];
     const pages = [];
     const tracksPerPage = 12;
-
     for (let i = 0; i < likedTracks.length; i += tracksPerPage) {
-      const pageTracks = likedTracks.slice(i, i + tracksPerPage);
-      pages.push(pageTracks);
+      pages.push(likedTracks.slice(i, i + tracksPerPage));
     }
-
     return pages;
   };
 
@@ -78,7 +75,6 @@ const BentoResults = ({ likedTracks, onStartNew }) => {
       setSelectedTrack(null);
     } else {
       const audio = new Audio(track.preview);
-
       audio.onerror = () => {
         setAudioError(
           `Failed to load audio for "${track.title || track.name}"`,
@@ -106,14 +102,6 @@ const BentoResults = ({ likedTracks, onStartNew }) => {
     }
   };
 
-  useEffect(() => {
-    return () => {
-      if (playingAudio) {
-        playingAudio.pause();
-      }
-    };
-  }, [playingAudio]);
-
   const handleExportPNG = async () => {
     if (!bentoGridRef.current || likedTracks.length === 0) {
       alert("No tracks to export!");
@@ -127,6 +115,8 @@ const BentoResults = ({ likedTracks, onStartNew }) => {
         backgroundColor: "#ffffff",
         scale: 2,
         useCORS: true,
+        logging: false,
+        allowTaint: true,
       });
 
       const link = document.createElement("a");
@@ -136,16 +126,61 @@ const BentoResults = ({ likedTracks, onStartNew }) => {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-
-      setTimeout(() => {
-        setExporting(false);
-      }, 1000);
     } catch (error) {
       console.error("Export failed:", error);
-      alert("Could not export PNG");
+      alert("Could not export PNG. Please try again or take a screenshot.");
+    } finally {
       setExporting(false);
     }
   };
+
+  const handleCopyAsText = async () => {
+    const text = likedTracks
+      .map(
+        (track, index) => `${index + 1}. ${track.name} - ${track.artist?.name}`,
+      )
+      .join("\n");
+
+    try {
+      await navigator.clipboard.writeText(`My Music Bento:\n\n${text}`);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error("Failed to copy:", error);
+    }
+  };
+
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "My Music Bento",
+          text: `Check out my music bento with ${likedTracks.length} tracks!`,
+          url: window.location.href,
+        });
+      } catch (error) {
+        console.error("Error sharing:", error);
+      }
+    } else {
+      setShowShareOptions(true);
+    }
+  };
+
+  const handleClearAll = () => {
+    if (
+      window.confirm(
+        `Are you sure you want to clear all ${likedTracks.length} tracks from your bento?`,
+      )
+    ) {
+      if (onClearTracks) onClearTracks();
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (playingAudio) playingAudio.pause();
+    };
+  }, [playingAudio]);
 
   const gridPages = getGridPages();
 
@@ -158,7 +193,7 @@ const BentoResults = ({ likedTracks, onStartNew }) => {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed top-20 right-4 z-50 p-4 bg-red-100 border border-red-200 rounded-xl shadow-lg max-w-sm"
+            className="fixed top-20 right-4 z-50 p-4 bg-red-100 border border-red-200 rounded-xl shadow-m3-3 max-w-sm"
           >
             <div className="flex items-center gap-3">
               <AlertCircle className="w-5 h-5 text-red-600" />
@@ -182,16 +217,15 @@ const BentoResults = ({ likedTracks, onStartNew }) => {
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={springExpressive}
-              className="w-14 h-14 rounded-[20px] bg-pink-100 flex items-center justify-center"
+              className="w-14 h-14 rounded-[20px] bg-accent/10 flex items-center justify-center border border-accent/20"
             >
-              <Grid className="w-7 h-7 text-pink-600" />
+              <Grid className="w-7 h-7 text-accent" />
             </motion.div>
             <div>
-              <h1 className="text-2xl font-semibold text-gray-800">
+              <h1 className="text-2xl font-semibold text-primary">
                 Your Music Bento
               </h1>
-              <p className="text-gray-600 mt-1">
-                {/* FIXED: Show actual liked tracks count, no limit */}
+              <p className="text-secondary mt-1">
                 {likedTracks.length > 0
                   ? `${likedTracks.length} curated tracks saved`
                   : "Start building your music collection"}
@@ -200,64 +234,79 @@ const BentoResults = ({ likedTracks, onStartNew }) => {
           </div>
 
           {likedTracks.length > 0 && (
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <motion.button
                 onClick={handleExportPNG}
                 disabled={exporting}
-                className="bg-pink-500 text-white px-5 py-3 rounded-full shadow-lg hover:shadow-xl transition-all hover:bg-pink-600 font-medium flex items-center gap-2 disabled:opacity-50"
+                className="bg-card border border-theme text-primary px-4 py-2 rounded-full shadow-m3-2 hover:shadow-m3-3 transition-all hover:bg-secondary font-medium flex items-center gap-2 disabled:opacity-50"
                 {...buttonSpring}
               >
                 <Download className="w-4 h-4" />
                 {exporting ? "Exporting..." : "Save Image"}
               </motion.button>
+
+              <motion.button
+                onClick={handleCopyAsText}
+                className="bg-card border border-theme text-primary px-4 py-2 rounded-full shadow-m3-2 hover:shadow-m3-3 transition-all hover:bg-secondary font-medium flex items-center gap-2"
+                {...buttonSpring}
+              >
+                {copied ? (
+                  <Check className="w-4 h-4 text-green-600" />
+                ) : (
+                  <Copy className="w-4 h-4" />
+                )}
+                {copied ? "Copied!" : "Copy Text"}
+              </motion.button>
+
+              <motion.button
+                onClick={handleShare}
+                className="bg-card border border-theme text-primary px-4 py-2 rounded-full shadow-m3-2 hover:shadow-m3-3 transition-all hover:bg-secondary font-medium flex items-center gap-2"
+                {...buttonSpring}
+              >
+                <Share2 className="w-4 h-4" />
+                Share
+              </motion.button>
+
+              <motion.button
+                onClick={handleClearAll}
+                className="bg-card border border-red-300 text-red-600 px-4 py-2 rounded-full shadow-m3-2 hover:shadow-m3-3 transition-all hover:bg-red-50 font-medium flex items-center gap-2"
+                {...buttonSpring}
+              >
+                <Trash2 className="w-4 h-4" />
+                Clear All
+              </motion.button>
             </div>
           )}
         </div>
 
-        {/* Stats - FIXED: Show actual count without limit */}
+        {/* Stats */}
         {likedTracks.length > 0 && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
-              {
-                label: "Total Tracks",
-                value: likedTracks.length,
-                icon: Heart,
-                color: "text-pink-600",
-                bg: "bg-pink-50",
-              },
+              { label: "Total Tracks", value: likedTracks.length, icon: Heart },
               {
                 label: "Bento Pages",
                 value: Math.ceil(likedTracks.length / 12),
                 icon: Grid,
-                color: "text-pink-600",
-                bg: "bg-pink-50",
               },
               {
                 label: "Unique Artists",
                 value: new Set(likedTracks.map((t) => t.artist?.name)).size,
                 icon: Music,
-                color: "text-pink-600",
-                bg: "bg-pink-50",
               },
-              {
-                label: "Taste Score",
-                value: "100%",
-                icon: Sparkles,
-                color: "text-pink-600",
-                bg: "bg-pink-50",
-              },
+              { label: "Taste Score", value: "100%", icon: Sparkles },
             ].map((stat, i) => (
               <motion.div
                 key={i}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}
-                className={`${stat.bg} p-4 rounded-2xl`}
+                className="bg-accent/10 p-4 rounded-2xl border border-accent/20"
               >
-                <div className={`text-xl font-semibold ${stat.color}`}>
+                <div className="text-xl font-semibold text-accent">
                   {stat.value}
                 </div>
-                <div className="text-sm text-gray-600 flex items-center gap-2 mt-1">
+                <div className="text-sm text-secondary flex items-center gap-2 mt-1">
                   <stat.icon className="w-3.5 h-3.5" />
                   {stat.label}
                 </div>
@@ -273,19 +322,19 @@ const BentoResults = ({ likedTracks, onStartNew }) => {
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="min-h-[400px] flex flex-col items-center justify-center p-8 text-center bg-white rounded-3xl border-2 border-gray-200"
+            className="min-h-[400px] flex flex-col items-center justify-center p-8 text-center bg-card rounded-3xl border-2 border-theme"
           >
-            <div className="text-5xl mb-4">🎵</div>
-            <h3 className="text-xl font-medium text-gray-800 mb-3">
+            <Music className="w-16 h-16 text-accent mb-4" />
+            <h3 className="text-xl font-medium text-primary mb-3">
               Your Bento Awaits
             </h3>
-            <p className="text-gray-600 mb-6 max-w-md">
+            <p className="text-secondary mb-6 max-w-md">
               Discover and save amazing tracks to create your personalized music
               bento box
             </p>
             <motion.button
               onClick={onStartNew}
-              className="bg-pink-500 text-white px-6 py-3 rounded-full shadow-lg hover:shadow-xl transition-all hover:bg-pink-600 font-medium flex items-center gap-2"
+              className="bg-accent text-on-accent px-6 py-3 rounded-full shadow-m3-2 hover:shadow-m3-3 transition-all font-medium flex items-center gap-2"
               {...buttonSpring}
             >
               Start Discovering Music
@@ -295,19 +344,17 @@ const BentoResults = ({ likedTracks, onStartNew }) => {
         ) : (
           gridPages.map((pageTracks, pageIndex) => (
             <div key={pageIndex} className="space-y-6 mb-12">
-              {/* Page Header */}
               {gridPages.length > 1 && (
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-medium text-gray-800 flex items-center gap-2">
+                  <h3 className="text-lg font-medium text-primary flex items-center gap-2">
                     Page {pageIndex + 1} of {gridPages.length}
                   </h3>
-                  <div className="text-sm text-gray-600 bg-gray-100 px-3 py-1.5 rounded-full">
+                  <div className="text-sm text-secondary bg-secondary px-3 py-1.5 rounded-full">
                     {pageTracks.length} tracks
                   </div>
                 </div>
               )}
 
-              {/* Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                 {pageTracks.map((track, trackIndex) => {
                   const isPlaying = selectedTrack === track.id && playingAudio;
@@ -321,49 +368,43 @@ const BentoResults = ({ likedTracks, onStartNew }) => {
                       transition={{
                         delay: (pageIndex * 12 + trackIndex) * 0.02,
                       }}
-                      className="bg-white rounded-xl shadow-lg p-4 border border-gray-200 hover:shadow-xl transition-all"
+                      className="bg-card rounded-xl shadow-m3-2 p-4 border border-theme hover:shadow-m3-3 transition-all"
                     >
                       <div className="p-2">
-                        {/* Track Info */}
                         <div className="flex items-start gap-3 mb-3">
                           <div className="relative flex-shrink-0">
-                            {trackImage ? (
-                              <img
-                                src={trackImage}
-                                className="w-14 h-14 rounded-lg object-cover"
-                                alt={track.title}
-                                onError={(e) => {
-                                  e.target.style.display = "none";
-                                  e.target.parentElement.innerHTML = `
-                                    <div class="w-14 h-14 rounded-lg bg-pink-100 flex items-center justify-center">
-                                      <div class="text-lg">🎵</div>
-                                    </div>
-                                  `;
-                                }}
-                              />
-                            ) : (
-                              <div className="w-14 h-14 rounded-lg bg-pink-100 flex items-center justify-center">
-                                <div className="text-lg">🎵</div>
-                              </div>
-                            )}
+                            <img
+                              src={trackImage}
+                              className="w-14 h-14 rounded-lg object-cover"
+                              alt={track.title}
+                              onError={(e) => {
+                                e.target.style.display = "none";
+                                e.target.parentElement.innerHTML = `
+                                  <div class="w-14 h-14 rounded-lg bg-accent/10 flex items-center justify-center border border-accent/20">
+                                    <svg class="w-6 h-6 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path>
+                                    </svg>
+                                  </div>
+                                `;
+                              }}
+                            />
                           </div>
 
                           <div className="flex-1 min-w-0">
-                            <h4 className="text-sm font-medium text-gray-800 truncate">
+                            <h4 className="text-sm font-medium text-primary truncate">
                               {track.title || track.name}
                             </h4>
-                            <p className="text-xs text-gray-600 truncate">
+                            <p className="text-xs text-secondary truncate">
                               {track.artist?.name}
                             </p>
                             {track.reason && (
-                              <p className="text-xs text-gray-600 italic mt-1 line-clamp-2">
+                              <p className="text-xs text-secondary italic mt-1 line-clamp-2">
                                 "{track.reason}"
                               </p>
                             )}
                           </div>
                         </div>
 
-                        {/* Actions */}
                         <div className="flex items-center gap-1">
                           <motion.button
                             onClick={(e) => {
@@ -371,12 +412,12 @@ const BentoResults = ({ likedTracks, onStartNew }) => {
                               handlePlayPreview(track);
                             }}
                             disabled={!track.preview}
-                            className={`p-2.5 rounded-full ${track.preview ? "bg-pink-500 text-white" : "bg-gray-200 text-gray-500 cursor-not-allowed"}`}
+                            className={`p-2.5 rounded-full ${track.preview ? "bg-accent text-on-accent" : "bg-secondary text-secondary cursor-not-allowed"}`}
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
                           >
                             {isPlaying ? (
-                              <X className="w-3.5 h-3.5" />
+                              <Pause className="w-3.5 h-3.5" />
                             ) : (
                               <Play className="w-3.5 h-3.5" />
                             )}
@@ -389,7 +430,7 @@ const BentoResults = ({ likedTracks, onStartNew }) => {
                             }
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="p-2.5 bg-gray-200 text-gray-600 rounded-full"
+                            className="p-2.5 bg-secondary text-primary rounded-full"
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
                           >
@@ -397,7 +438,7 @@ const BentoResults = ({ likedTracks, onStartNew }) => {
                           </motion.a>
 
                           <div className="ml-auto">
-                            <Heart className="w-4 h-4 text-pink-500" />
+                            <Heart className="w-4 h-4 text-accent fill-accent" />
                           </div>
                         </div>
                       </div>
@@ -414,17 +455,28 @@ const BentoResults = ({ likedTracks, onStartNew }) => {
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex justify-center mt-10 pt-8 border-t border-gray-300"
+        className="flex flex-col sm:flex-row justify-center gap-3 mt-10 pt-8 border-t border-theme"
       >
         <motion.button
           onClick={onStartNew}
-          className="bg-pink-500 text-white px-6 py-3 rounded-full shadow-lg hover:shadow-xl transition-all hover:bg-pink-600 font-medium flex items-center gap-2"
+          className="bg-accent text-on-accent px-6 py-3 rounded-full shadow-m3-2 hover:shadow-m3-3 transition-all font-medium flex items-center justify-center gap-2"
           {...buttonSpring}
         >
           <Music className="w-5 h-5" />
           Discover More Music
           <ChevronRight className="w-5 h-5" />
         </motion.button>
+
+        {likedTracks.length > 0 && (
+          <motion.button
+            onClick={handleClearAll}
+            className="border-2 border-red-300 text-red-600 px-6 py-3 rounded-full hover:bg-red-50 transition-all font-medium flex items-center justify-center gap-2"
+            {...buttonSpring}
+          >
+            <Trash2 className="w-5 h-5" />
+            Clear All Tracks
+          </motion.button>
+        )}
       </motion.div>
     </motion.div>
   );

@@ -1,247 +1,256 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Music,
-  AlertCircle,
-  Settings,
-  Info,
-  Sparkles,
-  ChevronRight,
-} from "lucide-react";
-import ParticleCanvas from "./components/ParticleCanvas";
+import { useTheme } from "./hooks/useTheme";
+import { pageTransition } from "./utils/motion";
+
+import TopBar from "./components/TopBar";
 import LogoMorph from "./components/LogoMorph";
-import OnboardingFlow from "./components/Onboarding/OnboardingFlow";
+import PromptInput from "./components/PromptInput";
 import GenerationSequence from "./components/GenerationSequence";
 import SwipeInterface from "./components/SwipeInterface";
 import BentoResults from "./components/BentoResults";
-import { getCombinedRecommendations } from "./services/recommendationService";
-import { springExpressive, pageTransition } from "./utils/motion";
+import ParticleCanvas from "./components/ParticleCanvas";
+import ThemePicker from "./components/ThemePicker";
+import FiltersModal from "./components/FiltersModal";
+
+// Services
+import {
+  getTextBasedRecommendations,
+  getMoodBasedRecommendations,
+  getGenreBasedRecommendations,
+  getMockRecommendations,
+} from "./services/recommendationService";
 
 const App = () => {
   const [flowState, setFlowState] = useState("logo");
-  const [userPreferences, setUserPreferences] = useState({
-    moods: [],
-    genres: [],
-    referenceTrack: null,
-  });
   const [generatedDeck, setGeneratedDeck] = useState([]);
   const [likedTracks, setLikedTracks] = useState([]);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingMessage, setLoadingMessage] = useState("");
   const [showResults, setShowResults] = useState(false);
-  // const [apiStatus, setApiStatus] = useState({
-  //   hasLastFm: false,
-  //   hasGemini: false,
-  //   isDemoMode: true,
-  // });
+  const [filters, setFilters] = useState({
+    moods: [],
+    genres: [],
+  });
+  const [showFilters, setShowFilters] = useState(false);
 
-  // useEffect(() => {
-  //   const lastfmKey = import.meta.env.VITE_LASTFM_API_KEY;
-  //   const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  //   const hasLastFm = !!lastfmKey && lastfmKey !== "your_lastfm_api_key_here";
-  //   const hasGemini = !!geminiKey && geminiKey !== "your_gemini_api_key_here";
-  //   setApiStatus({
-  //     hasLastFm,
-  //     hasGemini,
-  //     is: !hasLastFm || !hasGemini,
-  //   });
-  // }, []);
+  const theme = useTheme();
+
+  // Load saved liked tracks
+  useEffect(() => {
+    const savedLikedTracks = localStorage.getItem("musicme-liked-tracks");
+    if (savedLikedTracks) {
+      try {
+        setLikedTracks(JSON.parse(savedLikedTracks));
+      } catch (e) {
+        console.error("Failed to parse saved tracks:", e);
+      }
+    }
+  }, []);
+
+  // Save liked tracks
+  useEffect(() => {
+    if (likedTracks.length > 0) {
+      localStorage.setItem("musicme-liked-tracks", JSON.stringify(likedTracks));
+    } else {
+      localStorage.removeItem("musicme-liked-tracks");
+    }
+  }, [likedTracks]);
 
   const handleLogoComplete = () => {
-    setTimeout(() => setFlowState("onboarding"), 800);
+    setTimeout(() => setFlowState("prompt"), 800);
   };
 
-  const handleOnboardingComplete = async (preferences) => {
-    setUserPreferences(preferences);
+  const handleSearch = async (promptText) => {
     setFlowState("generating");
-    await generateDeckWithRecommendations(preferences);
-  };
 
-  const generateDeckWithRecommendations = async (preferences) => {
-    const updateProgress = (progress, message) => {
-      setLoadingProgress(progress);
-      setLoadingMessage(message);
-    };
-
-    const simulateProgress = () => {
-      const steps = [
-        [10, "Analyzing your music taste"],
-        [25, "Querying Last.fm database"],
-        [40, "Consulting AI music expert"],
-        [60, "Finding track matches"],
-        [80, "Compiling recommendations"],
-        [95, "Finalizing your discovery"],
-        [100, "Ready to explore"],
-      ];
-      steps.forEach(([progress, message], index) => {
-        setTimeout(() => {
-          updateProgress(progress, message);
-        }, index * 800);
+    const progressInterval = setInterval(() => {
+      setLoadingProgress((prev) => {
+        if (prev >= 100) {
+          clearInterval(progressInterval);
+          return 100;
+        }
+        return prev + 2;
       });
-    };
+    }, 30);
+
+    setLoadingMessage("Searching Last.fm for music...");
 
     try {
-      simulateProgress();
-      const finalPreferences = {
-        ...preferences,
-        moods: preferences.moods?.length > 0 ? preferences.moods : ["chill"],
-        genres: preferences.genres?.length > 0 ? preferences.genres : ["pop"],
-      };
+      let allRecommendations = [];
 
-      const tracks = await getCombinedRecommendations(finalPreferences);
-      if (tracks.length === 0) throw new Error("No recommendations received");
+      // Get text-based recommendations
+      if (promptText && promptText.trim()) {
+        setLoadingMessage("Analyzing your search query...");
+        const textRecs = await getTextBasedRecommendations(promptText);
+        allRecommendations = [...allRecommendations, ...textRecs];
+      }
 
-      setGeneratedDeck(tracks);
+      // Add mood-based recommendations
+      if (filters.moods.length > 0) {
+        setLoadingMessage("Finding tracks matching your mood...");
+        const moodRecs = await getMoodBasedRecommendations(filters.moods);
+        allRecommendations = [...allRecommendations, ...moodRecs];
+      }
+
+      // Add genre-based recommendations
+      if (filters.genres.length > 0) {
+        setLoadingMessage("Discovering tracks from your genres...");
+        const genreRecs = await getGenreBasedRecommendations(filters.genres);
+        allRecommendations = [...allRecommendations, ...genreRecs];
+      }
+
+      // Remove duplicates
+      const uniqueTracks = allRecommendations.filter(
+        (track, index, self) =>
+          index === self.findIndex((t) => t.id === track.id),
+      );
+
+      // If no recommendations, use mock data
+      if (uniqueTracks.length === 0) {
+        console.warn("No recommendations found, using mock data");
+        const mockRecs = getMockRecommendations(promptText || "music");
+        setGeneratedDeck(mockRecs);
+      } else {
+        setGeneratedDeck(uniqueTracks.slice(0, 20));
+      }
+
       setLikedTracks([]);
+      setLoadingMessage("Ready to discover music!");
 
       setTimeout(() => {
         setFlowState("swiping");
         setLoadingProgress(0);
         setLoadingMessage("");
-      }, 1200);
+        clearInterval(progressInterval);
+      }, 800);
     } catch (error) {
-      console.error("Deck generation failed:", error);
-      const fallbackDeck = getFallbackDeck(preferences);
-      setGeneratedDeck(fallbackDeck);
+      console.error("Recommendation error:", error);
+
+      // Fallback to mock data
+      const mockRecs = getMockRecommendations(promptText || "music");
+      setGeneratedDeck(mockRecs);
       setLikedTracks([]);
+
       setTimeout(() => {
         setFlowState("swiping");
         setLoadingProgress(0);
         setLoadingMessage("");
+        clearInterval(progressInterval);
       }, 800);
     }
   };
 
-  const getFallbackDeck = (preferences) => {
-    return [
-      {
-        id: "fallback_1",
-        name: "Blinding Lights",
-        artist: { name: "The Weeknd" },
-        album: { title: "After Hours" },
-        images: {
-          large:
-            "https://i.scdn.co/image/ab67616d00001e02/4c5a1d3c7c20caa2ef52a2b0b9f8b1a8",
-        },
-        reason: `A synth-pop masterpiece`,
-        genre: preferences.genres?.[0] || "pop",
-        mood: preferences.moods?.[0] || "chill",
-      },
-    ];
+  const handleFiltersUpdate = (newFilters) => {
+    setFilters(newFilters);
+    setShowFilters(false);
   };
 
   const handleBackToStart = () => {
-    setFlowState("onboarding");
+    setFlowState("prompt");
     setGeneratedDeck([]);
-    setLikedTracks([]);
     setShowResults(false);
+    setShowFilters(false);
   };
 
-  // const handleSaveTrack = (track) => {
-  //   setLikedTracks((prev) => (prev.length >= 10 ? prev : [...prev, track]));
-  // };
-
-  // Unlimited tracks
   const handleSaveTrack = (track) => {
     setLikedTracks((prev) => {
-      // Check if track already exists to prevent duplicates
       const trackExists = prev.some(
         (t) =>
           t.id === track.id ||
           (t.name === track.name && t.artist?.name === track.artist?.name),
       );
 
-      if (trackExists) {
-        console.log("Track already exists in bento:", track.name);
-        return prev;
-      }
+      if (trackExists) return prev;
 
-      console.log("Adding track to bento:", track.name);
-      // Add track without limit
-      return [...prev, track];
+      const newTrack = {
+        ...track,
+        savedAt: new Date().toISOString(),
+      };
+
+      return [...prev, newTrack];
     });
   };
+
+  const handleViewResults = () => {
+    setShowResults(true);
+  };
+
+  const handleStartNew = () => {
+    setFlowState("prompt");
+    setGeneratedDeck([]);
+    setShowResults(false);
+    setShowFilters(false);
+  };
+
+  const handleClearLikedTracks = () => {
+    setLikedTracks([]);
+    localStorage.removeItem("musicme-liked-tracks");
+  };
+
+  const activeFilterCount = filters.moods.length + filters.genres.length;
+
   return (
-    <div className="min-h-screen w-full bg-gradient-to-b from-gray-50 to-white text-gray-800 font-sans overflow-hidden">
-      {/* Animated Background Blobs */}
-      <ParticleCanvas isActive={flowState !== "swiping"} />
+    <div className="min-h-screen w-full bg-primary text-primary font-sans overflow-hidden">
+      <TopBar
+        flowState={flowState}
+        likedTracks={likedTracks}
+        onHomeClick={handleBackToStart}
+        onViewResults={handleViewResults}
+        onShowFilters={() => setShowFilters(true)}
+        activeFilterCount={activeFilterCount}
+        theme={theme}
+      />
 
-      {/* Top App Bar */}
-      <motion.header
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        transition={springExpressive}
-        className="fixed top-0 left-0 right-0 z-50 px-6 py-4"
-      >
-        <div className="mx-auto max-w-6xl flex items-center justify-center md:justify-between">
-          {/* Brand Logo: Hidden on mobile, flex on medium+ screens */}
-          <motion.div
-            className="hidden md:flex items-center gap-3 px-5 py-3 rounded-[28px] bg-white shadow-lg border border-gray-200"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <div className="p-2 rounded-2xl bg-pink-100">
-              <Music className="w-6 h-6 text-pink-600" />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold text-gray-800">music.me</h1>
-              <p className="text-xs text-gray-600">Discover your sound</p>
-            </div>
-          </motion.div>
+      <ThemePicker
+        isOpen={theme.showThemePicker}
+        onClose={theme.toggleThemePicker}
+        themes={theme.themes}
+        currentTheme={theme.currentTheme}
+        onThemeSelect={theme.setTheme}
+      />
 
-          {/* Action Buttons */}
-          <div className="flex items-center gap-3">
-            {(flowState === "swiping" || showResults) && (
-              <motion.button
-                onClick={handleBackToStart}
-                className="bg-pink-500 text-white px-5 py-3 rounded-full shadow-lg hover:shadow-xl transition-all hover:bg-pink-600 flex items-center gap-2"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Sparkles className="w-5 h-5" />
-                <span className="font-medium">New Session</span>
-              </motion.button>
-            )}
-          </div>
-        </div>
-      </motion.header>
-
-      {/* Main Content Area */}
       <main className="relative z-10 pt-28 px-4 pb-8 min-h-screen">
         <div className="max-w-4xl mx-auto">
           <AnimatePresence mode="wait">
             {flowState === "logo" && (
-              <motion.div
-                key="logo"
-                className="flex justify-center items-center h-[70vh]"
-                {...pageTransition}
-              >
+              <motion.div key="logo" className="h-[70vh]" {...pageTransition}>
                 <LogoMorph onComplete={handleLogoComplete} />
               </motion.div>
             )}
 
-            {flowState === "onboarding" && (
+            {flowState === "prompt" && !showFilters && (
               <motion.div
-                key="onboarding"
-                className=""
+                key="prompt"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                transition={springExpressive}
+                className="py-8"
               >
-                <OnboardingFlow onComplete={handleOnboardingComplete} />
+                <PromptInput
+                  onSearch={handleSearch}
+                  onShowFilters={() => setShowFilters(true)}
+                  filters={filters}
+                />
               </motion.div>
+            )}
+
+            {showFilters && (
+              <FiltersModal
+                filters={filters}
+                onUpdate={handleFiltersUpdate}
+                onClose={() => setShowFilters(false)}
+              />
             )}
 
             {flowState === "generating" && (
               <motion.div
                 key="generating"
-                className="flex justify-center items-center h-[70vh]"
+                className="h-[70vh] flex items-center justify-center"
                 {...pageTransition}
               >
                 <GenerationSequence
                   progress={loadingProgress}
-                  preferences={userPreferences}
                   message={loadingMessage}
                 />
               </motion.div>
@@ -253,13 +262,13 @@ const App = () => {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
-                transition={springExpressive}
+                transition={{ type: "spring", stiffness: 100, damping: 15 }}
               >
                 <SwipeInterface
                   deck={generatedDeck}
                   onBack={handleBackToStart}
                   onSave={handleSaveTrack}
-                  onViewResults={() => setShowResults(true)}
+                  onViewResults={handleViewResults}
                   likedTracks={likedTracks}
                 />
               </motion.div>
@@ -270,17 +279,20 @@ const App = () => {
                 key="results"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={springExpressive}
+                transition={{ type: "spring", stiffness: 100, damping: 15 }}
               >
                 <BentoResults
                   likedTracks={likedTracks}
-                  onStartNew={handleBackToStart}
+                  onStartNew={handleStartNew}
+                  onClearTracks={handleClearLikedTracks}
                 />
               </motion.div>
             )}
           </AnimatePresence>
         </div>
       </main>
+
+      <ParticleCanvas isActive={flowState !== "swiping" && !showResults} />
     </div>
   );
 };

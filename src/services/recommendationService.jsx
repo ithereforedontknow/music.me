@@ -1,52 +1,30 @@
-// API Configuration
 const LASTFM_API_KEY = import.meta.env.VITE_LASTFM_API_KEY || "";
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
 
-// API Endpoints
-const LASTFM_API_URL = "https://ws.audioscrobbler.com/2.0/";
-const GEMINI_API_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
+// Enhanced keyword detection patterns
+const SIMILARITY_KEYWORDS = [
+  "like",
+  "similar",
+  "sounds like",
+  "reminds me of",
+  "style of",
+];
+const MOOD_KEYWORDS = [
+  "sad",
+  "happy",
+  "energetic",
+  "chill",
+  "angry",
+  "peaceful",
+  "romantic",
+];
 
-// Mood to Last.fm tag mapping
-const MOOD_TO_TAGS = {
-  energetic: ["energetic", "upbeat", "dance", "workout", "party"],
-  chill: ["chill", "ambient", "lofi", "relax", "calm"],
-  happy: ["happy", "uplifting", "feelgood", "positive", "sunny"],
-  focused: ["focus", "study", "concentration", "work", "productive"],
-  melancholy: ["sad", "melancholy", "emotional", "reflective", "somber"],
-  party: ["party", "dance", "club", "festival", "celebration"],
-  romantic: ["romantic", "love", "intimate", "passionate", "sensual"],
-  nostalgic: ["nostalgic", "retro", "throwback", "classic", "oldies"],
-};
-
-// Genre to Last.fm tag mapping
-const GENRE_MAPPINGS = {
-  rock: "rock",
-  pop: "pop",
-  electronic: "electronic",
-  "hip hop": "hiphop",
-  jazz: "jazz",
-  indie: "indie",
-  alternative: "alternative",
-  "r&b": "rnb",
-  classical: "classical",
-  metal: "metal",
-  folk: "folk",
-  soul: "soul",
-  kpop: "kpop",
-  lofi: "lofi",
-  country: "country",
-  reggae: "reggae",
-};
-
-// Last.fm API Service
-export class LastFmService {
+class LastFMService {
   constructor(apiKey) {
-    this.apiKey = apiKey || LASTFM_API_KEY;
-    this.baseUrl = LASTFM_API_URL;
+    this.apiKey = apiKey;
+    this.baseUrl = "https://ws.audioscrobbler.com/2.0/";
   }
 
-  async makeRequest(method, params) {
+  async makeRequest(method, params = {}) {
     try {
       const queryParams = new URLSearchParams({
         method,
@@ -56,764 +34,530 @@ export class LastFmService {
       });
 
       const response = await fetch(`${this.baseUrl}?${queryParams}`);
-
-      if (!response.ok) {
+      if (!response.ok)
         throw new Error(`Last.fm API error: ${response.status}`);
-      }
-
       return await response.json();
     } catch (error) {
       console.error("Last.fm request failed:", error);
-      throw error;
+      return null;
     }
   }
 
-  async getTopTracksByTag(tag, limit = 15) {
-    try {
-      const data = await this.makeRequest("tag.gettoptracks", {
-        tag: tag.toLowerCase(),
-        limit,
-      });
-
-      if (data?.tracks?.track) {
-        return data.tracks.track.map((track) => ({
-          id: track.mbid || track.url,
-          name: track.name,
-          artist: {
-            name: track.artist.name,
-            mbid: track.artist.mbid,
-          },
-          url: track.url,
-          duration: track.duration ? parseInt(track.duration) / 1000 : 180,
-          playcount: parseInt(track.playcount) || 0,
-          listeners: parseInt(track.listeners) || 0,
-          tag: tag,
-          source: "lastfm_tag",
-        }));
+  getAlbumArt(track) {
+    if (track.image && Array.isArray(track.image)) {
+      const sizes = ["extralarge", "large", "medium"];
+      for (const size of sizes) {
+        const img = track.image.find((i) => i.size === size);
+        // Skip Last.fm's default placeholder (has this specific hash)
+        if (
+          img?.["#text"] &&
+          img["#text"].trim() &&
+          !img["#text"].includes("2a96cbd8b46e442fc41c2b86b821562f")
+        ) {
+          return img["#text"];
+        }
       }
-      return [];
-    } catch (error) {
-      console.error(`Failed to get tracks for tag ${tag}:`, error);
-      return [];
     }
+
+    const trackName = track.name || track.title || "M";
+    const artistName = track.artist?.name || track.artist || "A";
+    const initials =
+      trackName.charAt(0).toUpperCase() + artistName.charAt(0).toUpperCase();
+
+    const colors = [
+      "6366f1",
+      "ec4899",
+      "8b5cf6",
+      "14b8a6",
+      "f59e0b",
+      "ef4444",
+      "10b981",
+      "3b82f6",
+    ];
+    const color = colors[trackName.charCodeAt(0) % colors.length];
+
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=${color}&color=fff&size=500&bold=true&font-size=0.4`;
+  }
+
+  normalizeTrack(track, source = "search") {
+    return {
+      id:
+        track.mbid ||
+        `lastfm_${source}_${track.name}_${track.artist?.name || track.artist}`,
+      name: track.name,
+      title: track.name,
+      artist: {
+        name: track.artist?.name || track.artist || "Unknown Artist",
+        mbid: track.artist?.mbid || null,
+      },
+      url: track.url,
+      listeners: parseInt(track.listeners) || 0,
+      playcount: parseInt(track.playcount) || 0,
+      images: {
+        large: this.getAlbumArt(track),
+        medium: this.getAlbumArt(track),
+        small: this.getAlbumArt(track),
+      },
+      mbid: track.mbid || null,
+      preview: null,
+      source: "lastfm",
+    };
+  }
+
+  async searchTracks(query, limit = 15) {
+    const data = await this.makeRequest("track.search", {
+      track: query,
+      limit,
+    });
+    if (!data?.results?.trackmatches?.track) return [];
+
+    const tracks = Array.isArray(data.results.trackmatches.track)
+      ? data.results.trackmatches.track
+      : [data.results.trackmatches.track];
+
+    return tracks.map((t) => this.normalizeTrack(t, "search"));
+  }
+
+  async searchArtists(query, limit = 5) {
+    const data = await this.makeRequest("artist.search", {
+      artist: query,
+      limit,
+    });
+    if (!data?.results?.artistmatches?.artist) return [];
+
+    const artists = Array.isArray(data.results.artistmatches.artist)
+      ? data.results.artistmatches.artist
+      : [data.results.artistmatches.artist];
+
+    return artists;
+  }
+
+  async getSimilarArtists(artistName, limit = 10) {
+    const data = await this.makeRequest("artist.getsimilar", {
+      artist: artistName,
+      limit,
+    });
+
+    if (!data?.similarartists?.artist) return [];
+
+    const artists = Array.isArray(data.similarartists.artist)
+      ? data.similarartists.artist
+      : [data.similarartists.artist];
+
+    return artists;
+  }
+
+  async getArtistTopTracks(artistName, limit = 5) {
+    const data = await this.makeRequest("artist.gettoptracks", {
+      artist: artistName,
+      limit,
+    });
+
+    if (!data?.toptracks?.track) return [];
+
+    const tracks = Array.isArray(data.toptracks.track)
+      ? data.toptracks.track
+      : [data.toptracks.track];
+
+    return tracks.map((t) => this.normalizeTrack(t, "artist_top"));
   }
 
   async getSimilarTracks(artist, track, limit = 10) {
-    try {
-      const data = await this.makeRequest("track.getsimilar", {
-        artist: artist,
-        track: track,
-        limit,
-      });
+    const data = await this.makeRequest("track.getsimilar", {
+      artist,
+      track,
+      limit,
+    });
 
-      if (data?.similartracks?.track) {
-        return data.similartracks.track.map((track) => ({
-          id: track.mbid || track.url,
-          name: track.name,
-          artist: {
-            name: track.artist.name,
-            mbid: track.artist.mbid,
-          },
-          url: track.url,
-          source: "lastfm_similar",
-        }));
-      }
-      return [];
-    } catch (error) {
-      console.error("Failed to get similar tracks:", error);
-      return [];
-    }
+    if (!data?.similartracks?.track) return [];
+
+    const tracks = Array.isArray(data.similartracks.track)
+      ? data.similartracks.track
+      : [data.similartracks.track];
+
+    return tracks.map((t) => this.normalizeTrack(t, "similar"));
   }
 
-  async getArtistTopTracks(artist, limit = 8) {
-    try {
-      const data = await this.makeRequest("artist.gettoptracks", {
-        artist: artist,
-        limit,
-      });
+  async getTopTracksByTag(tag, limit = 10) {
+    const data = await this.makeRequest("tag.gettoptracks", {
+      tag: tag.toLowerCase(),
+      limit,
+    });
+    if (!data?.tracks?.track) return [];
 
-      if (data?.toptracks?.track) {
-        return data.toptracks.track.map((track) => ({
-          id: track.mbid || track.url,
-          name: track.name,
-          artist: {
-            name: track.artist.name,
-          },
-          url: track.url,
-          playcount: parseInt(track.playcount) || 0,
-          source: "lastfm_artist",
-        }));
-      }
-      return [];
-    } catch (error) {
-      console.error("Failed to get artist top tracks:", error);
-      return [];
-    }
+    const tracks = Array.isArray(data.tracks.track)
+      ? data.tracks.track
+      : [data.tracks.track];
+
+    return tracks.map((t) => ({
+      ...this.normalizeTrack(t, "tag"),
+      tag,
+      reason: `Popular ${tag} track`,
+    }));
   }
 
-  async searchTracks(query, limit = 10) {
-    try {
-      const data = await this.makeRequest("track.search", {
-        track: query,
-        limit,
-      });
+  async getTopTracks(limit = 15) {
+    const data = await this.makeRequest("chart.gettoptracks", { limit });
+    if (!data?.tracks?.track) return [];
 
-      if (data?.results?.trackmatches?.track) {
-        return data.results.trackmatches.track.map((track) => ({
-          id: track.mbid || track.url,
-          name: track.name,
-          artist: {
-            name: track.artist,
-          },
-          url: track.url,
-          listeners: parseInt(track.listeners) || 0,
-          source: "lastfm_search",
-        }));
-      }
-      return [];
-    } catch (error) {
-      console.error("Search failed:", error);
-      return [];
-    }
-  }
+    const tracks = Array.isArray(data.tracks.track)
+      ? data.tracks.track
+      : [data.tracks.track];
 
-  async getTrackInfo(artist, track) {
-    try {
-      const data = await this.makeRequest("track.getInfo", {
-        artist: artist,
-        track: track,
-      });
-
-      if (data?.track) {
-        return {
-          id: data.track.mbid || data.track.url,
-          name: data.track.name,
-          artist: {
-            name: data.track.artist.name,
-            mbid: data.track.artist.mbid,
-          },
-          album: data.track.album?.title,
-          duration: parseInt(data.track.duration) / 1000 || 180,
-          playcount: parseInt(data.track.playcount) || 0,
-          listeners: parseInt(data.track.listeners) || 0,
-          tags: data.track.toptags?.tag?.map((t) => t.name) || [],
-          url: data.track.url,
-          wiki: data.track.wiki?.content,
-        };
-      }
-      return null;
-    } catch (error) {
-      console.error("Failed to get track info:", error);
-      return null;
-    }
+    return tracks.map((t) => ({
+      ...this.normalizeTrack(t, "chart"),
+      reason: "Trending globally",
+    }));
   }
 }
 
-// Gemini AI Service
-export class GeminiMusicService {
-  constructor(apiKey) {
-    this.apiKey = apiKey || GEMINI_API_KEY;
-    this.baseUrl = GEMINI_API_URL;
+class RecommendationService {
+  constructor() {
+    this.lastFM = new LastFMService(LASTFM_API_KEY);
   }
 
-  async getAIRecommendations(preferences) {
+  // Detect query intent
+  analyzeQuery(prompt) {
+    const lower = prompt.toLowerCase();
+
+    // Check for similarity queries: "radiohead like songs", "similar to radiohead"
+    const hasSimilarityKeyword = SIMILARITY_KEYWORDS.some((keyword) =>
+      lower.includes(keyword),
+    );
+
+    if (hasSimilarityKeyword) {
+      // Extract artist name
+      const words = prompt.split(/\s+/);
+      const filteredWords = words.filter(
+        (w) =>
+          !SIMILARITY_KEYWORDS.some((k) => k.includes(w.toLowerCase())) &&
+          !["songs", "music", "tracks", "artists"].includes(w.toLowerCase()),
+      );
+
+      return {
+        type: "similar_artist",
+        artist: filteredWords.join(" ").trim(),
+        originalPrompt: prompt,
+      };
+    }
+
+    // Check for mood queries
+    const moodMatch = MOOD_KEYWORDS.find((mood) => lower.includes(mood));
+    if (moodMatch) {
+      return {
+        type: "mood",
+        mood: moodMatch,
+        originalPrompt: prompt,
+      };
+    }
+
+    // Default to general search
+    return {
+      type: "general",
+      query: prompt,
+      originalPrompt: prompt,
+    };
+  }
+
+  async getTextBasedRecommendations(prompt, limit = 15) {
+    console.log("Getting recommendations for:", prompt);
+
+    if (!LASTFM_API_KEY || LASTFM_API_KEY.includes("your_lastfm_api_key")) {
+      console.warn("No Last.fm API key configured, using mock data");
+      return getMockRecommendations(prompt);
+    }
+
+    const intent = this.analyzeQuery(prompt);
+    console.log("Query intent:", intent);
+
     try {
-      if (!this.apiKey) {
-        return this.getMockAIRecommendations(preferences);
+      let allTracks = [];
+
+      if (intent.type === "similar_artist") {
+        // Get similar artists, then get their top tracks
+        const similarArtists = await this.lastFM.getSimilarArtists(
+          intent.artist,
+          8,
+        );
+        console.log(
+          `Found ${similarArtists.length} similar artists to ${intent.artist}`,
+        );
+
+        for (const artist of similarArtists) {
+          const topTracks = await this.lastFM.getArtistTopTracks(
+            artist.name,
+            3,
+          );
+          allTracks.push(
+            ...topTracks.map((track) => ({
+              ...track,
+              reason: `Similar to ${intent.artist}`,
+              score: parseFloat(artist.match) || 0.8,
+            })),
+          );
+        }
+
+        // Also get the original artist's top tracks (fewer of them)
+        const originalTracks = await this.lastFM.getArtistTopTracks(
+          intent.artist,
+          2,
+        );
+        allTracks.push(
+          ...originalTracks.map((track) => ({
+            ...track,
+            reason: `By ${intent.artist}`,
+            score: 0.6,
+          })),
+        );
+      } else if (intent.type === "mood") {
+        // Use tag-based search for moods
+        const moodTracks = await this.lastFM.getTopTracksByTag(intent.mood, 15);
+        allTracks.push(
+          ...moodTracks.map((track) => ({
+            ...track,
+            score: 1.0,
+          })),
+        );
+      } else {
+        // General search - try multiple strategies
+
+        // Strategy 1: Direct search
+        const directTracks = await this.lastFM.searchTracks(prompt, 8);
+        allTracks.push(
+          ...directTracks.map((track) => ({
+            ...track,
+            reason: `Matches "${prompt}"`,
+            score: 1.0,
+          })),
+        );
+
+        // Strategy 2: Extract keywords and search
+        const keywords = this.extractKeywords(prompt);
+        for (const keyword of keywords.slice(0, 2)) {
+          const keywordTracks = await this.lastFM.searchTracks(keyword, 4);
+          allTracks.push(
+            ...keywordTracks.map((track) => ({
+              ...track,
+              reason: `Related to ${keyword}`,
+              score: 0.8,
+            })),
+          );
+        }
+
+        // Strategy 3: Tag-based if we have genre keywords
+        const genreKeywords = [
+          "rock",
+          "pop",
+          "jazz",
+          "electronic",
+          "hip hop",
+          "indie",
+          "metal",
+          "classical",
+        ];
+        const matchedGenre = genreKeywords.find((g) =>
+          prompt.toLowerCase().includes(g),
+        );
+        if (matchedGenre) {
+          const genreTracks = await this.lastFM.getTopTracksByTag(
+            matchedGenre,
+            5,
+          );
+          allTracks.push(
+            ...genreTracks.map((track) => ({
+              ...track,
+              score: 0.7,
+            })),
+          );
+        }
       }
 
-      const prompt = this.buildRecommendationPrompt(preferences);
-
-      const response = await fetch(`${this.baseUrl}?key=${this.apiKey}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: prompt,
-                },
-              ],
-            },
-          ],
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Gemini API error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return this.parseAIResponse(data);
+      // Remove duplicates and sort by score
+      const uniqueTracks = this.removeDuplicates(allTracks);
+      return uniqueTracks
+        .sort((a, b) => (b.score || 0) - (a.score || 0))
+        .slice(0, limit);
     } catch (error) {
-      console.error("Gemini API error:", error);
-      return this.getMockAIRecommendations(preferences);
+      console.error("Error getting recommendations:", error);
+      return getMockRecommendations(prompt);
     }
   }
 
-  buildRecommendationPrompt(preferences) {
-    const { moods = [], genres = [], referenceTrack } = preferences;
-
-    let prompt = `You are a music expert with deep knowledge of music across all genres and eras.
-    Provide a list of 20 music recommendations in valid JSON format with this exact structure:
-
-    [
-      {
-        "name": "Song Title",
-        "artist": "Artist Name",
-        "album": "Album Name (if known)",
-        "reason": "Brief explanation of why this track matches the user's preferences (1-2 sentences)",
-        "genre": "Primary genre",
-        "mood": "Primary mood",
-        "year": "Release year (if known)",
-        "tags": ["tag1", "tag2", "tag3"]
-      }
-    ]
-
-    User preferences:
-    `;
-
-    if (moods.length > 0) {
-      prompt += `- Moods: ${moods.join(", ")}\n`;
+  async getMoodBasedRecommendations(moods = [], limit = 15) {
+    if (!LASTFM_API_KEY || LASTFM_API_KEY.includes("your_lastfm_api_key")) {
+      return getMockRecommendations("mood music");
     }
 
-    if (genres.length > 0) {
-      prompt += `- Genres: ${genres.join(", ")}\n`;
-    }
+    const MOOD_TO_TAGS = {
+      energetic: ["workout", "party", "upbeat"],
+      chill: ["chill", "relax", "ambient"],
+      happy: ["happy", "upbeat"],
+      focused: ["study", "concentration"],
+      melancholy: ["sad", "melancholy"],
+      party: ["party", "dance"],
+      romantic: ["love", "romantic"],
+      nostalgic: ["retro", "classic"],
+    };
 
-    if (referenceTrack) {
-      const trackName = referenceTrack.name || referenceTrack.title;
-      const artistName =
-        referenceTrack.artist?.name || referenceTrack.artists?.[0]?.name;
-      prompt += `- Reference track: "${trackName}" by ${artistName}\n`;
-    }
-
-    prompt += `\nGuidelines:
-    1. Return ONLY valid JSON, no additional text
-    2. Include a mix of popular and underrated tracks
-    3. Ensure artist diversity (same artist shouldn't appear more than twice)
-    4. Match at least one user preference per track
-    5. Include release years when known
-    6. Add relevant tags for better categorization
-    7. Make reasons insightful and personalized`;
-
-    return prompt;
-  }
-
-  parseAIResponse(data) {
-    try {
-      const text = data.candidates[0].content.parts[0].text;
-      // Clean the response text
-      const cleanedText = text.replace(/```json\n?|\n?```/g, "").trim();
-      const parsed = JSON.parse(cleanedText);
-
-      // Validate and enhance the data
-      return parsed.map((track, index) => ({
-        id: `ai_${Date.now()}_${index}`,
-        name: track.name,
-        artist: { name: track.artist },
-        album: track.album ? { title: track.album } : undefined,
-        reason: track.reason,
-        genre: track.genre,
-        mood: track.mood,
-        year: track.year,
-        tags: track.tags || [],
-        source: "ai",
-        score: 2.5, // Base score for AI recommendations
-      }));
-    } catch (error) {
-      console.error("Failed to parse AI response:", error);
-      return [];
-    }
-  }
-
-  getMockAIRecommendations(preferences) {
-    const { moods = ["chill"], genres = ["pop"] } = preferences;
-
-    return [
-      {
-        id: "mock_1",
-        name: "Blinding Lights",
-        artist: { name: "The Weeknd" },
-        album: { title: "After Hours" },
-        reason: `A synth-pop masterpiece with 80s influences that perfectly captures ${moods[0]} energy while staying true to ${genres[0]} sensibilities.`,
-        genre: genres[0] || "pop",
-        mood: moods[0] || "energetic",
-        year: 2019,
-        tags: ["synth-pop", "80s", "chart-topper"],
-        source: "ai_mock",
-        score: 3.0,
-      },
-      {
-        id: "mock_2",
-        name: "Stay",
-        artist: { name: "The Kid LAROI, Justin Bieber" },
-        album: { title: "F*CK LOVE 3" },
-        reason:
-          "Emotional pop collaboration with heartfelt lyrics and a catchy melody that resonates with contemporary pop audiences.",
-        genre: "pop",
-        mood: "melancholy",
-        year: 2021,
-        tags: ["pop", "emotional", "collaboration"],
-        source: "ai_mock",
-        score: 2.8,
-      },
-      {
-        id: "mock_3",
-        name: "good 4 u",
-        artist: { name: "Olivia Rodrigo" },
-        album: { title: "SOUR" },
-        reason:
-          "Pop-punk influenced track with raw emotional delivery and angsty lyrics that bridge pop and alternative rock.",
-        genre: "alternative",
-        mood: "energetic",
-        year: 2021,
-        tags: ["pop-punk", "angsty", "breakup"],
-        source: "ai_mock",
-        score: 2.9,
-      },
-    ];
-  }
-}
-
-// Main Recommendation Service
-export class MusicRecommendationService {
-  constructor(lastfmApiKey, geminiApiKey) {
-    this.lastfmService = new LastFmService(lastfmApiKey);
-    this.geminiService = new GeminiMusicService(geminiApiKey);
-    this.useLastFm =
-      !!lastfmApiKey && lastfmApiKey !== "your_lastfm_api_key_here";
-  }
-
-  async getCombinedRecommendations(preferences) {
-    const { moods, genres, referenceTrack } = preferences;
     let allTracks = [];
 
     try {
-      console.log("Generating recommendations for:", {
-        moods,
-        genres,
-        referenceTrack,
-      });
-
-      // Get Last.fm recommendations by genre
-      if (genres && genres.length > 0 && this.useLastFm) {
-        console.log("Fetching genre-based recommendations from Last.fm...");
-        for (const genre of genres.slice(0, 3)) {
-          const lastfmTag =
-            GENRE_MAPPINGS[genre.toLowerCase()] || genre.toLowerCase();
-          try {
-            const genreTracks = await this.lastfmService.getTopTracksByTag(
-              lastfmTag,
-              10,
-            );
-            console.log(
-              `Found ${genreTracks.length} tracks for genre: ${genre}`,
-            );
-
-            const tracksWithMetadata = genreTracks.map((track) => ({
+      for (const mood of moods.slice(0, 3)) {
+        const tags = MOOD_TO_TAGS[mood] || [mood];
+        for (const tag of tags.slice(0, 2)) {
+          const tracks = await this.lastFM.getTopTracksByTag(tag, 5);
+          allTracks.push(
+            ...tracks.map((track) => ({
               ...track,
-              genre: genre,
-              mood: this.detectMoodFromTags(track.tags || [], genre),
-              reason: `Top ${genre} track with ${track.playcount.toLocaleString()} plays`,
-              score: 3 + track.playcount / 1000000 + Math.random() * 0.3,
-              source: "lastfm_genre",
-            }));
-
-            allTracks = [...allTracks, ...tracksWithMetadata];
-          } catch (error) {
-            console.warn(`Failed to get ${genre} recommendations:`, error);
-          }
-        }
-      }
-
-      // Get Last.fm recommendations by mood
-      if (moods && moods.length > 0 && this.useLastFm) {
-        console.log("Fetching mood-based recommendations from Last.fm...");
-        for (const mood of moods.slice(0, 2)) {
-          const moodTags = MOOD_TO_TAGS[mood] || [mood];
-
-          for (const tag of moodTags.slice(0, 2)) {
-            try {
-              const moodTracks = await this.lastfmService.getTopTracksByTag(
-                tag,
-                8,
-              );
-              console.log(
-                `Found ${moodTracks.length} tracks for mood tag: ${tag}`,
-              );
-
-              const tracksWithMetadata = moodTracks.map((track) => ({
-                ...track,
-                mood: mood,
-                reason: `Perfect for ${mood} moments`,
-                score: 2.5 + track.listeners / 10000 + Math.random() * 0.3,
-                source: "lastfm_mood",
-              }));
-
-              allTracks = [...allTracks, ...tracksWithMetadata];
-            } catch (error) {
-              console.warn(`Failed to get ${tag} mood recommendations:`, error);
-            }
-          }
-        }
-      }
-
-      // Get AI recommendations for enhanced diversity and personalization
-      if (allTracks.length < 15) {
-        console.log("Fetching AI recommendations for diversity...");
-        try {
-          const aiRecommendations =
-            await this.geminiService.getAIRecommendations(preferences);
-          console.log(
-            `AI provided ${aiRecommendations.length} recommendations`,
+              reason: `Perfect for ${mood} moments`,
+              mood,
+              score: 0.9,
+            })),
           );
-
-          // Add AI tracks with proper metadata
-          allTracks = [...allTracks, ...aiRecommendations];
-        } catch (error) {
-          console.warn("AI recommendations failed:", error);
         }
       }
 
-      // Get similar tracks if reference track is provided
-      if (referenceTrack && allTracks.length < 20) {
-        const trackName = referenceTrack.name || referenceTrack.title;
-        const artistName =
-          referenceTrack.artist?.name || referenceTrack.artists?.[0]?.name;
-
-        if (trackName && artistName && this.useLastFm) {
-          console.log("Fetching similar tracks from Last.fm...");
-          try {
-            const similarTracks = await this.lastfmService.getSimilarTracks(
-              artistName,
-              trackName,
-              6,
-            );
-
-            const tracksWithMetadata = similarTracks.map((track) => ({
-              ...track,
-              reason: `Similar to "${trackName}" by ${artistName}`,
-              score: 2.8 + Math.random() * 0.4,
-              source: "lastfm_similar",
-            }));
-
-            allTracks = [...allTracks, ...tracksWithMetadata];
-          } catch (error) {
-            console.warn("Similar tracks search failed:", error);
-          }
-        }
-      }
-
-      // Remove duplicates based on track name and artist
-      const uniqueTracks = this.removeDuplicates(allTracks);
-      console.log(`Total unique tracks: ${uniqueTracks.length}`);
-
-      // If we still don't have enough tracks, add fallback
-      if (uniqueTracks.length < 8) {
-        console.log("Adding fallback tracks...");
-        const fallbackTracks = this.getFallbackRecommendations(preferences);
-        allTracks = [...uniqueTracks, ...fallbackTracks];
-      } else {
-        allTracks = uniqueTracks;
-      }
-
-      // Calculate final scores with user preference bonuses
-      const scoredTracks = allTracks.map((track) => ({
-        ...track,
-        score: this.calculateScore(track, preferences),
-        hasPreview: false, // Last.fm doesn't provide audio previews
-      }));
-
-      // Sort by score
-      scoredTracks.sort((a, b) => b.score - a.score);
-
-      // Ensure artist diversity in top results
-      const diverseTracks = this.ensureArtistDiversity(scoredTracks, 2);
-
-      // Final list with enhanced metadata
-      const finalTracks = diverseTracks
-        .slice(0, 25)
-        .map((track) => this.enhanceTrackMetadata(track));
-
-      console.log("Final track count:", finalTracks.length);
-      return finalTracks;
+      return this.removeDuplicates(allTracks).slice(0, limit);
     } catch (error) {
-      console.error("Combined recommendations failed:", error);
-      return this.getFallbackRecommendations(preferences);
+      console.error("Error getting mood recommendations:", error);
+      return getMockRecommendations("mood music");
     }
   }
 
-  detectMoodFromTags(tags, genre) {
-    const moodKeywords = {
-      energetic: ["energetic", "upbeat", "dance", "party", "workout"],
-      chill: ["chill", "calm", "relax", "ambient", "peaceful"],
-      happy: ["happy", "joyful", "uplifting", "positive", "sunny"],
-      focused: ["focus", "study", "concentration", "work", "productive"],
-    };
-
-    for (const [mood, keywords] of Object.entries(moodKeywords)) {
-      if (
-        keywords.some((keyword) =>
-          tags.some((tag) => tag.toLowerCase().includes(keyword)),
-        )
-      ) {
-        return mood;
-      }
+  async getGenreBasedRecommendations(genres = [], limit = 15) {
+    if (!LASTFM_API_KEY || LASTFM_API_KEY.includes("your_lastfm_api_key")) {
+      return getMockRecommendations("genre music");
     }
 
-    return "chill"; // Default mood
+    let allTracks = [];
+
+    try {
+      for (const genre of genres.slice(0, 3)) {
+        const tracks = await this.lastFM.getTopTracksByTag(genre, 6);
+        allTracks.push(
+          ...tracks.map((track) => ({
+            ...track,
+            reason: `Top ${genre} track`,
+            genre,
+            score: 0.9,
+          })),
+        );
+      }
+
+      return this.removeDuplicates(allTracks).slice(0, limit);
+    } catch (error) {
+      console.error("Error getting genre recommendations:", error);
+      return getMockRecommendations("genre music");
+    }
+  }
+
+  extractKeywords(prompt) {
+    const stopWords = new Set([
+      "the",
+      "a",
+      "an",
+      "and",
+      "or",
+      "but",
+      "in",
+      "on",
+      "at",
+      "to",
+      "for",
+      "of",
+      "with",
+      "by",
+      "music",
+      "songs",
+      "tracks",
+      "like",
+      "similar",
+      "sounds",
+      "reminds",
+      "style",
+    ]);
+
+    return prompt
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((word) => word.length > 2 && !stopWords.has(word));
   }
 
   removeDuplicates(tracks) {
     const seen = new Set();
     return tracks.filter((track) => {
-      const key = `${track.name?.toLowerCase()}_${track.artist?.name?.toLowerCase()}`;
-      if (seen.has(key) || !track.name || !track.artist?.name) {
-        return false;
-      }
+      const key = `${track.name}_${track.artist?.name}`.toLowerCase();
+      if (seen.has(key)) return false;
       seen.add(key);
       return true;
     });
   }
-
-  ensureArtistDiversity(tracks, maxPerArtist = 2) {
-    const artistCount = {};
-    const result = [];
-
-    for (const track of tracks) {
-      const artist = track.artist?.name;
-      if (!artist) continue;
-
-      artistCount[artist] = (artistCount[artist] || 0) + 1;
-      if (artistCount[artist] <= maxPerArtist) {
-        result.push(track);
-      }
-    }
-
-    return result;
-  }
-
-  calculateScore(track, preferences) {
-    let score = track.score || 1;
-    const { moods = [], genres = [] } = preferences;
-
-    // Bonus for matching user preferences
-    if (
-      track.genre &&
-      genres.some(
-        (g) =>
-          g.toLowerCase().includes(track.genre.toLowerCase()) ||
-          track.genre.toLowerCase().includes(g.toLowerCase()),
-      )
-    ) {
-      score += 0.8;
-    }
-
-    if (
-      track.mood &&
-      moods.some(
-        (m) =>
-          m.toLowerCase().includes(track.mood.toLowerCase()) ||
-          track.mood.toLowerCase().includes(m.toLowerCase()),
-      )
-    ) {
-      score += 0.7;
-    }
-
-    // Source bonus (Last.fm > AI > Mock)
-    if (track.source?.startsWith("lastfm")) {
-      score += 0.3;
-    } else if (track.source?.startsWith("ai")) {
-      score += 0.2;
-    }
-
-    // Popularity bonus for Last.fm tracks
-    if (track.playcount) {
-      score += Math.min(track.playcount / 1000000, 0.5);
-    }
-
-    // Random factor for diversity
-    score += Math.random() * 0.2;
-
-    return Math.min(score, 5);
-  }
-
-  enhanceTrackMetadata(track) {
-    // Generate placeholder image based on track/artist name
-    const placeholderText = encodeURIComponent(
-      (track.name?.charAt(0) || "M") + (track.artist?.name?.charAt(0) || "A"),
-    );
-
-    return {
-      ...track,
-      // Add placeholder images for UI
-      images: {
-        small: `https://ui-avatars.com/api/?name=${placeholderText}&background=7D5260&color=fff&size=150`,
-        medium: `https://ui-avatars.com/api/?name=${placeholderText}&background=7D5260&color=fff&size=300`,
-        large: `https://ui-avatars.com/api/?name=${placeholderText}&background=7D5260&color=fff&size=500`,
-      },
-      // Add album info if missing
-      album: track.album || { title: "Unknown Album" },
-      // Ensure duration
-      duration: track.duration || 180,
-    };
-  }
-
-  getFallbackRecommendations(preferences) {
-    console.log("Using fallback recommendations");
-    const { moods = ["chill"], genres = ["pop"] } = preferences;
-
-    const fallbackTracks = [
-      {
-        id: "fallback_1",
-        name: "Blinding Lights",
-        artist: { name: "The Weeknd" },
-        album: { title: "After Hours" },
-        images: {
-          small:
-            "https://i.scdn.co/image/ab67616d00001e02/4c5a1d3c7c20caa2ef52a2b0b9f8b1a8",
-          medium:
-            "https://i.scdn.co/image/ab67616d00001e02/4c5a1d3c7c20caa2ef52a2b0b9f8b1a8",
-          large:
-            "https://i.scdn.co/image/ab67616d00001e02/4c5a1d3c7c20caa2ef52a2b0b9f8b1a8",
-        },
-        reason: `A synth-pop masterpiece that captures ${moods[0]} energy`,
-        genre: genres[0] || "pop",
-        mood: moods[0] || "energetic",
-        year: 2019,
-        duration: 200,
-        playcount: 250000000,
-        source: "fallback",
-        score: 3.5,
-        hasPreview: false,
-      },
-      {
-        id: "fallback_2",
-        name: "Stay",
-        artist: { name: "The Kid LAROI, Justin Bieber" },
-        album: { title: "F*CK LOVE 3" },
-        images: {
-          small:
-            "https://i.scdn.co/image/ab67616d00001e02/5b2f6dfb0e0a0b0a0a0a0a0a0a0a0a0a",
-          medium:
-            "https://i.scdn.co/image/ab67616d00001e02/5b2f6dfb0e0a0b0a0a0a0a0a0a0a0a0a",
-          large:
-            "https://i.scdn.co/image/ab67616d00001e02/5b2f6dfb0e0a0b0a0a0a0a0a0a0a0a0a",
-        },
-        reason: "Emotional pop collaboration with heartfelt lyrics",
-        genre: "pop",
-        mood: "melancholy",
-        year: 2021,
-        duration: 141,
-        playcount: 200000000,
-        source: "fallback",
-        score: 3.2,
-        hasPreview: false,
-      },
-      {
-        id: "fallback_3",
-        name: "good 4 u",
-        artist: { name: "Olivia Rodrigo" },
-        album: { title: "SOUR" },
-        images: {
-          small:
-            "https://i.scdn.co/image/ab67616d00001e02/6b9b6c9e6b9b6c9e6b9b6c9e6b9b6c9e",
-          medium:
-            "https://i.scdn.co/image/ab67616d00001e02/6b9b6c9e6b9b6c9e6b9b6c9e6b9b6c9e",
-          large:
-            "https://i.scdn.co/image/ab67616d00001e02/6b9b6c9e6b9b6c9e6b9b6c9e6b9b6c9e",
-        },
-        reason: "Pop-punk influenced track with raw emotional delivery",
-        genre: "alternative",
-        mood: "energetic",
-        year: 2021,
-        duration: 178,
-        playcount: 180000000,
-        source: "fallback",
-        score: 3.0,
-        hasPreview: false,
-      },
-      {
-        id: "fallback_4",
-        name: "Heat Waves",
-        artist: { name: "Glass Animals" },
-        album: { title: "Dreamland" },
-        images: {
-          small:
-            "https://i.scdn.co/image/ab67616d00001e02/a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5",
-          medium:
-            "https://i.scdn.co/image/ab67616d00001e02/a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5",
-          large:
-            "https://i.scdn.co/image/ab67616d00001e02/a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5",
-        },
-        reason: "Dreamy indie electronic perfect for chill sessions",
-        genre: "indie",
-        mood: "chill",
-        year: 2020,
-        duration: 238,
-        playcount: 220000000,
-        source: "fallback",
-        score: 2.8,
-        hasPreview: false,
-      },
-      {
-        id: "fallback_5",
-        name: "As It Was",
-        artist: { name: "Harry Styles" },
-        album: { title: "Harry's House" },
-        images: {
-          small:
-            "https://i.scdn.co/image/ab67616d00001e02/b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6",
-          medium:
-            "https://i.scdn.co/image/ab67616d00001e02/b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6",
-          large:
-            "https://i.scdn.co/image/ab67616d00001e02/b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6",
-        },
-        reason: "Catchy pop with nostalgic 80s influence",
-        genre: "pop",
-        mood: "nostalgic",
-        year: 2022,
-        duration: 167,
-        playcount: 190000000,
-        source: "fallback",
-        score: 2.7,
-        hasPreview: false,
-      },
-    ];
-
-    return fallbackTracks;
-  }
 }
 
-// Export singleton instance
-let recommendationServiceInstance = null;
+// Singleton
+let recommendationService = null;
 
-export const getCombinedRecommendations = async (preferences) => {
-  if (!recommendationServiceInstance) {
-    const lastfmApiKey = import.meta.env.VITE_LASTFM_API_KEY;
-    const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY;
-    recommendationServiceInstance = new MusicRecommendationService(
-      lastfmApiKey,
-      geminiApiKey,
-    );
+export const getTextBasedRecommendations = async (prompt) => {
+  if (!recommendationService) {
+    recommendationService = new RecommendationService();
   }
-
-  return recommendationServiceInstance.getCombinedRecommendations(preferences);
+  return recommendationService.getTextBasedRecommendations(prompt, 15);
 };
 
-// Export individual services for specific use cases
-export const searchLastFmTracks = async (query) => {
-  const lastfmApiKey = import.meta.env.VITE_LASTFM_API_KEY;
-  const service = new LastFmService(lastfmApiKey);
-  return service.searchTracks(query);
+export const getMoodBasedRecommendations = async (moods) => {
+  if (!recommendationService) {
+    recommendationService = new RecommendationService();
+  }
+  return recommendationService.getMoodBasedRecommendations(moods, 15);
 };
 
-export const getTrackInfo = async (artist, track) => {
-  const lastfmApiKey = import.meta.env.VITE_LASTFM_API_KEY;
-  const service = new LastFmService(lastfmApiKey);
-  return service.getTrackInfo(artist, track);
+export const getGenreBasedRecommendations = async (genres) => {
+  if (!recommendationService) {
+    recommendationService = new RecommendationService();
+  }
+  return recommendationService.getGenreBasedRecommendations(genres, 15);
+};
+
+export const getMockRecommendations = (prompt) => {
+  return [
+    {
+      id: "mock_1",
+      name: "Paranoid Android",
+      title: "Paranoid Android",
+      artist: { name: "Radiohead" },
+      reason: `Matches "${prompt}"`,
+      images: {
+        large:
+          "https://ui-avatars.com/api/?name=PR&background=6366f1&color=fff&size=500&bold=true",
+      },
+      preview: null,
+      source: "mock",
+    },
+    {
+      id: "mock_2",
+      name: "Everything In Its Right Place",
+      title: "Everything In Its Right Place",
+      artist: { name: "Radiohead" },
+      reason: "Popular track",
+      images: {
+        large:
+          "https://ui-avatars.com/api/?name=ER&background=ec4899&color=fff&size=500&bold=true",
+      },
+      preview: null,
+      source: "mock",
+    },
+    {
+      id: "mock_3",
+      name: "Fake Plastic Trees",
+      title: "Fake Plastic Trees",
+      artist: { name: "Radiohead" },
+      reason: "Classic track",
+      images: {
+        large:
+          "https://ui-avatars.com/api/?name=FR&background=8b5cf6&color=fff&size=500&bold=true",
+      },
+      preview: null,
+      source: "mock",
+    },
+  ];
 };

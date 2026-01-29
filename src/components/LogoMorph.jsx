@@ -8,7 +8,6 @@ const LogoMorph = ({ onComplete }) => {
     const timer = setTimeout(() => {
       onComplete?.();
     }, 2000);
-
     return () => clearTimeout(timer);
   }, [onComplete]);
 
@@ -16,7 +15,7 @@ const LogoMorph = ({ onComplete }) => {
     <div className="flex items-center justify-center min-h-[400px]">
       {/* Main Logo Container */}
       <motion.div
-        className="relative w-32 h-32 bg-pink-100 rounded-3xl flex items-center justify-center shadow-m3-3"
+        className="relative w-32 h-32 bg-accent/10 rounded-3xl flex items-center justify-center shadow-m3-3 border border-accent/20"
         initial={{ scale: 0, rotate: -180 }}
         animate={{ scale: 1, rotate: 0 }}
         transition={springExpressiveBouncy}
@@ -33,7 +32,7 @@ const LogoMorph = ({ onComplete }) => {
             scale: { duration: 1.5, repeat: Infinity },
           }}
         >
-          <Sparkles className="w-6 h-6 text-pink-600" />
+          <Sparkles className="w-6 h-6 text-accent" />
         </motion.div>
 
         {/* Music Icon */}
@@ -47,7 +46,7 @@ const LogoMorph = ({ onComplete }) => {
             repeat: Infinity,
           }}
         >
-          <Music className="w-16 h-16 text-pink-600" />
+          <Music className="w-16 h-16 text-accent" />
         </motion.div>
       </motion.div>
 
@@ -59,7 +58,7 @@ const LogoMorph = ({ onComplete }) => {
         transition={{ delay: 0.4, ...springExpressive }}
       >
         <motion.h1
-          className="display-small font-bold text-on-surface mb-2"
+          className="text-4xl font-bold text-primary mb-2"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.6 }}
@@ -67,7 +66,7 @@ const LogoMorph = ({ onComplete }) => {
           music.me
         </motion.h1>
         <motion.p
-          className="body-large text-on-surface-variant"
+          className="text-lg text-secondary"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.8 }}
